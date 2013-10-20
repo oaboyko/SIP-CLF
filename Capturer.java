@@ -1,4 +1,3 @@
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -15,7 +14,6 @@ import org.jnetpcap.protocol.network.Ip6;
 import org.jnetpcap.protocol.tcpip.Tcp;
 import org.jnetpcap.protocol.tcpip.Udp;
 import org.jnetpcap.protocol.voip.Sip;
-import org.omg.CORBA.Request;
 
 public class Capturer {
 
@@ -84,36 +82,30 @@ public class Capturer {
 			Sip sip = new Sip();
 			Ip4 ip4 = new Ip4();
 			Ip6 ip6 = new Ip6();
-			String to, from, to_tag, from_tag, call_id, cseq_method, cseq_number, transport, source_addr, dest_addr, source_port, dest_port;
-			Date time_stamp;
+			String to, from, to_tag, from_tag, call_id, cseq_method, cseq_number, transport, source_addr, dest_addr, source_port, dest_port, status;
+			//Date time_stamp;
 			
 			public void nextPacket(PcapPacket packet, String user){
-//				if(packet.hasHeader(payload)){
-//					final Pattern pattern = Pattern.compile("Via: SIP/\\d+.\\d+/");
-//					String payloadS = payload.getUTF8String(0, payload.size());
-//					System.out.printf("_____________PAYLOAD STRING:\n%s\n___________________\n", payloadS);
-//					Matcher matcher = pattern.matcher(payloadS);
-//					while(matcher.find()){
-//						System.out.println("+++++++++Version: " + matcher.group() + "++++++++++");
-//					}
-//					/*String[] version = pattern.split(payloadS);
-//					for(String s : version){
-//						System.out.println("------Version: " + s);
-//					}*/
-//					byte[] payloadCont = payload.getByteArray(0, payload.size());
-//					StringBuilder sb = new StringBuilder();
-//					for(byte b : payloadCont){
-//						sb.append(String.format("%02X", b));
-//					}
-//					System.out.printf("--->Payload: %s\n", sb.toString());
-//				}
+				to = "";
+				from = "";
+				to_tag = "";
+				from_tag = "";
+				call_id = "";
+				cseq_method = "";
+				cseq_number = "";
+				transport = "";
+				source_addr = "";
+				dest_addr = "";
+				source_port = "";
+				dest_port = "";
+				
+				System.out.println("-+-+-+___________SIP___________-+-+-+-+");
 				
 				//Get the time stamp of the packet
-				time_stamp = new Date(packet.getCaptureHeader().timestampInMillis());
-				System.out.println("CLF TIME STAMP " + time_stamp);
+				//time_stamp = new Date(packet.getCaptureHeader().timestampInMillis());
+				System.out.println("CLF TIME STAMP\t" + packet.getCaptureHeader().timestampInMillis());
 				
 				if(packet.hasHeader(sip)){
-					System.out.println("-+-+-+___________SIP___________-+-+-+-+");
 					String temp;
 					Pattern pattern;
 					Matcher matcher;
@@ -159,54 +151,115 @@ public class Capturer {
 					}
 					System.out.println("CLF CSeq Number " + cseq_number + "\nCLF CSeq Method\t" + cseq_method);
 					
-					//Get Transport, Source Port # and Destination Port #
-					if(packet.hasHeader(udp)){
-						transport = "udp";
-						source_port = Integer.toString(udp.source());
-						dest_port = Integer.toString(udp.destination());
+					String sip_header = sip.getUTF8String(0, sip.size());
+					//System.out.println(sip_header);
+					//Get Status
+					pattern = Pattern.compile("SIP/\\d+.\\d+ (\\d+) ");
+					matcher = pattern.matcher(sip_header);
+					while(matcher.find()){
+						status = matcher.group(1);
 					}
-					else{
-						if(packet.hasHeader(tcp)){
-							transport = "tcp";
-							source_port = Integer.toString(tcp.source());
-							dest_port = Integer.toString(tcp.destination());
+					System.out.println("CLF Status\t" + status);
+				}
+				else{
+					if(packet.hasHeader(payload)){
+						Pattern pattern;
+						Matcher matcher;
+						String s_payload = payload.getUTF8String(0, payload.size());
+						
+						//Get From URI and From Tag
+						pattern = Pattern.compile("From:.*<(.*);.*>;tag=(\\w+)");
+						matcher = pattern.matcher(s_payload);
+						System.out.println(s_payload);
+						while(matcher.find()){
+							from = matcher.group(1);
+							from_tag = matcher.group(2);
 						}
-						else{
-							transport = "NULL";
-							source_port = "NULL";
-							dest_port = "NULL";
+						System.out.println("CLF FROM\t" + from);
+						System.out.println("CLF FROM TAG\t" + from_tag);
+						
+						//Get To URI
+						pattern = Pattern.compile("To: <(.*)>");
+						matcher = pattern.matcher(s_payload);
+						while(matcher.find()){
+							to = matcher.group(1);
 						}
-					}
-					System.out.println("CLF Transport\t" + transport);
-					System.out.println("CLF Source Port\t" + source_port);
-					System.out.println("CLF Dest Port\t" + dest_port);
+						System.out.println("CLF TO\t\t" + to);
+						
+						//Get To Tag if there is one
+						pattern = Pattern.compile("To:.*tag=(.*)");
+						matcher = pattern.matcher(s_payload);
+						while(matcher.find()){
+							to_tag = matcher.group(1);
+						}
+						System.out.println("CLF TO TAG\t" + to_tag);
+						
+						//Get CSeq Number and CSeq Method
+						pattern = Pattern.compile("CSeq: (\\d+) (.*)");
+						matcher = pattern.matcher(s_payload);
+						while(matcher.find()){
+							cseq_number = matcher.group(1);
+							cseq_method = matcher.group(2);
+						}
+						System.out.println("CLF CSEQ #\t" + cseq_number);
+						System.out.println("CLF CSEQ METHOD\t" + cseq_method);
+						
+						//Get Call-ID
+						pattern = Pattern.compile("Call-ID: (.*)");
+						matcher = pattern.matcher(s_payload);
+						while(matcher.find()){
+							call_id = matcher.group(1);
+						}
+						System.out.println("CLF CALL-ID\t" + call_id);
 					
-					if(packet.hasHeader(ip4)){
-						//Get Source Address if IP v4
-						source_addr = FormatUtils.ip(ip4.source());
-						//Get Destination Address IP v4
-						dest_addr = FormatUtils.ip(ip4.destination());
 					}
-					else{
-						if(packet.hasHeader(ip6)){
-							//Get Source Address if IP v6
-							source_addr = FormatUtils.ip(ip6.source());
-							
-							//Get Destination Address if IP v6
-							dest_addr = FormatUtils.ip(ip6.destination());
-						}
-						else{
-							source_addr = "NULL";
-							dest_addr = "NULL";
-						}
-					}
-					System.out.println("CLF Source\t" + source_addr);
-					System.out.println("CLF Destin\t" + dest_addr);
-					
-					
 				}
 				
-				System.out.println("________________________________________");
+				//Get Transport, Source Port # and Destination Port #
+				if(packet.hasHeader(udp)){
+					transport = "udp";
+					source_port = Integer.toString(udp.source());
+					dest_port = Integer.toString(udp.destination());
+				}
+				else{
+					if(packet.hasHeader(tcp)){
+						transport = "tcp";
+						source_port = Integer.toString(tcp.source());
+						dest_port = Integer.toString(tcp.destination());
+					}
+					else{
+						transport = "NULL";
+						source_port = "NULL";
+						dest_port = "NULL";
+					}
+				}
+				System.out.println("CLF Transport\t" + transport);
+				System.out.println("CLF Source Port\t" + source_port);
+				System.out.println("CLF Dest Port\t" + dest_port);
+				
+				if(packet.hasHeader(ip4)){
+					//Get Source Address if IP v4
+					source_addr = FormatUtils.ip(ip4.source());
+					//Get Destination Address IP v4
+					dest_addr = FormatUtils.ip(ip4.destination());
+				}
+				else{
+					if(packet.hasHeader(ip6)){
+						//Get Source Address if IP v6
+						source_addr = FormatUtils.ip(ip6.source());
+						
+						//Get Destination Address if IP v6
+						dest_addr = FormatUtils.ip(ip6.destination());
+					}
+					else{
+						source_addr = "NULL";
+						dest_addr = "NULL";
+					}
+				}
+				System.out.println("CLF Source\t" + source_addr);
+				System.out.println("CLF Destin\t" + dest_addr);
+				
+				System.out.println("________________________________");
 								
 				/*Print the whole packet*/
 				System.out.printf("Received packet at %s caplen=%-4d %s\n", 
