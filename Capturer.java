@@ -1,3 +1,8 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -43,11 +48,12 @@ public class Capturer {
 		//Set default capture interface
 		PcapIf device = allDevs.get(devNum);
 		//Set maximum sizeof the packet
-		int p_length = 64*1024;
+		int p_length = 15*1024;
 		//Capture in "promiscuous" mode
 		int flags = Pcap.MODE_PROMISCUOUS;
-		//Timeout after 5 seconds
-		int timeout = 5*1000;
+		//Timeout after X seconds
+		System.out.println("Please input the timeout duration in seconds: ");
+		int timeout = Integer.parseInt(System.console().readLine()) * 1000;
 		
 		//Start live capture
 		Pcap pcap = Pcap.openLive(device.getName(), p_length, flags, timeout, errBuf);
@@ -74,15 +80,16 @@ public class Capturer {
 			}
 		}
 		
+		
 				
 		PcapPacketHandler<String> jpacketHandler = new PcapPacketHandler<String>(){
-			Payload payload = new Payload();
+			//Payload payload = new Payload();
 			Udp udp = new Udp();
 			Tcp tcp = new Tcp();
 			Sip sip = new Sip();
 			Ip4 ip4 = new Ip4();
 			Ip6 ip6 = new Ip6();
-			String to, from, to_tag, from_tag, call_id, cseq_method, cseq_number, transport, source_addr, dest_addr, source_port, dest_port, status;
+			String to, from, to_tag, from_tag, call_id, cseq_method, cseq_number, transport, source_addr, dest_addr, source_port, dest_port, status, request_uri, request, directionality, server_txn, client_txn;
 			//Date time_stamp;
 			
 			public void nextPacket(PcapPacket packet, String user){
@@ -98,6 +105,11 @@ public class Capturer {
 				dest_addr = "";
 				source_port = "";
 				dest_port = "";
+				request_uri = "";
+				request = "";
+				directionality = "";
+				server_txn = "";
+				client_txn = "";
 				
 				System.out.println("-+-+-+___________SIP___________-+-+-+-+");
 				
@@ -152,68 +164,36 @@ public class Capturer {
 					System.out.println("CLF CSeq Number " + cseq_number + "\nCLF CSeq Method\t" + cseq_method);
 					
 					String sip_header = sip.getUTF8String(0, sip.size());
-					//System.out.println(sip_header);
+					System.out.println("SIP: " + sip_header);
+					
 					//Get Status
 					pattern = Pattern.compile("SIP/\\d+.\\d+ (\\d+) ");
 					matcher = pattern.matcher(sip_header);
 					while(matcher.find()){
 						status = matcher.group(1);
 					}
-					System.out.println("CLF Status\t" + status);
-				}
-				else{
-					if(packet.hasHeader(payload)){
-						Pattern pattern;
-						Matcher matcher;
-						String s_payload = payload.getUTF8String(0, payload.size());
-						
-						//Get From URI and From Tag
-						pattern = Pattern.compile("From:.*<(.*);.*>;tag=(\\w+)");
-						matcher = pattern.matcher(s_payload);
-						System.out.println(s_payload);
-						while(matcher.find()){
-							from = matcher.group(1);
-							from_tag = matcher.group(2);
-						}
-						System.out.println("CLF FROM\t" + from);
-						System.out.println("CLF FROM TAG\t" + from_tag);
-						
-						//Get To URI
-						pattern = Pattern.compile("To: <(.*)>");
-						matcher = pattern.matcher(s_payload);
-						while(matcher.find()){
-							to = matcher.group(1);
-						}
-						System.out.println("CLF TO\t\t" + to);
-						
-						//Get To Tag if there is one
-						pattern = Pattern.compile("To:.*tag=(.*)");
-						matcher = pattern.matcher(s_payload);
-						while(matcher.find()){
-							to_tag = matcher.group(1);
-						}
-						System.out.println("CLF TO TAG\t" + to_tag);
-						
-						//Get CSeq Number and CSeq Method
-						pattern = Pattern.compile("CSeq: (\\d+) (.*)");
-						matcher = pattern.matcher(s_payload);
-						while(matcher.find()){
-							cseq_number = matcher.group(1);
-							cseq_method = matcher.group(2);
-						}
-						System.out.println("CLF CSEQ #\t" + cseq_number);
-						System.out.println("CLF CSEQ METHOD\t" + cseq_method);
-						
-						//Get Call-ID
-						pattern = Pattern.compile("Call-ID: (.*)");
-						matcher = pattern.matcher(s_payload);
-						while(matcher.find()){
-							call_id = matcher.group(1);
-						}
-						System.out.println("CLF CALL-ID\t" + call_id);
+					System.out.println("CLF Status:\t" + status);
 					
+					//Get Request-URI
+					pattern = Pattern.compile("[A-Z]+\\s+(.*)\\s+SIP");
+					matcher = pattern.matcher(sip_header);
+					while(matcher.find()){
+						request_uri = matcher.group(1);
 					}
+					System.out.println("CLF R-URI:\t" + request_uri);
+					
+					//Get Message Type
+					if(!request_uri.isEmpty()){
+						request = "R";
+						System.out.println("CLF Message Type:\t " + request);
+					}
+					else{
+						request = "r";
+						System.out.println("CLF Message Type:\t " + request);
+					}
+										
 				}
+				
 				
 				//Get Transport, Source Port # and Destination Port #
 				if(packet.hasHeader(udp)){
@@ -259,13 +239,54 @@ public class Capturer {
 				System.out.println("CLF Source\t" + source_addr);
 				System.out.println("CLF Destin\t" + dest_addr);
 				
+				//Get Directionality
+				//First get local (external) IP address
+				String ip_local = null;
+				URL ipEcho = null;
+				try {
+					ipEcho = new URL("http://ipecho.net/plain");
+				} catch (MalformedURLException e1) {
+					e1.printStackTrace();
+				}
+				BufferedReader reader = null;
+				try{
+					reader = new BufferedReader(new InputStreamReader(ipEcho.openStream(), "UTF-8"));
+					for(String line; (line = reader.readLine()) != null;){
+						ip_local = line;
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				finally{
+					if(reader != null) try {
+						reader.close();
+					}
+					catch(IOException ignore){
+						
+					}
+				}
+				//Now compare local (external) IP address to the destination IP of the packet
+				if(dest_addr == ip_local){
+					directionality = "r";
+				}
+				else{
+					if(source_addr == ip_local){
+						directionality = "s";
+					}
+				}
+				
+				//Create Transaction
+				//if(){
+					 
+				//}
+				
 				System.out.println("________________________________");
 								
 				/*Print the whole packet*/
-				System.out.printf("Received packet at %s caplen=%-4d %s\n", 
-						new Date(packet.getCaptureHeader().timestampInMillis()), 
-						packet.getCaptureHeader().caplen(),
-						packet.toString());
+				//System.out.printf("Received packet at %s caplen=%-4d %s\n", 
+				//		new Date(packet.getCaptureHeader().timestampInMillis()), 
+				//		packet.getCaptureHeader().caplen(),
+				//		packet.toString());
 			}
 		};
 		
