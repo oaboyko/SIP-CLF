@@ -59,6 +59,9 @@ public class updatedCapturer {
 		// Timeout after X seconds
 		System.out.println("Please input the timeout duration in seconds: ");
 		int timeout = Integer.parseInt(System.console().readLine()) * 1000;
+		//Filter at specific port
+		System.out.println("Please input the port number on which you want to listen: ");
+		int port_num = Integer.parseInt(System.console().readLine());
 
 		// Start live capture
 		Pcap pcap = Pcap.openLive(device.getName(), p_length, flags, timeout,
@@ -66,7 +69,7 @@ public class updatedCapturer {
 
 		// BPF program assists in filtering in the SIP packets
 		PcapBpfProgram program = new PcapBpfProgram();
-		String expression = "dst port 5060 and (tcp or udp)";
+		String expression = "dst port " + port_num +" and (tcp or udp)";
 
 		if (pcap == null) {
 			System.err.printf("Error while opening device for capture: "
