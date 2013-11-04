@@ -150,11 +150,14 @@ public class updatedCapturer {
 
 					// Get the From URI
 					temp = sip.fieldValue(Sip.Fields.From);
-					pattern = Pattern.compile("<(.*);.*>;tag=(.*)");
+					pattern = Pattern.compile("<(.*);.*>;tag=(\\w+[:-\.!%\*_\+`'~]\\w+)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						from = matcher.group(1);
 						from_tag = matcher.group(2);
+					}
+					if(from == null || from_tag == null){
+							System.out.println("Malformed Packet on the From Tag");
 					}
 					System.out.println("CLF FROM\t" + from + "\nCLF FROM TAG\t"
 							+ from_tag);
@@ -169,7 +172,7 @@ public class updatedCapturer {
 					System.out.println("CLF TO\t\t" + to);
 
 					// Get the To Tag
-					pattern = Pattern.compile("tag=(.*)");
+					pattern = Pattern.compile("tag=(\\w+[:-\.!%\*_\+`'~]\\w+)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						to_tag = matcher.group(1);
