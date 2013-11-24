@@ -5,7 +5,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,14 +92,14 @@ public class updatedCapturer {
 
 		PcapPacketHandler<String> jpacketHandler = new PcapPacketHandler<String>() {
 
-			Udp udp = new Udp();
-			Tcp tcp = new Tcp();
-			Sip sip = new Sip();
-			Ip4 ip4 = new Ip4();
-			Ip6 ip6 = new Ip6();
-			Sdp sdp = new Sdp();
+			private Udp udp = new Udp();
+			private Tcp tcp = new Tcp();
+			private Sip sip = new Sip();
+			private Ip4 ip4 = new Ip4();
+			private Ip6 ip6 = new Ip6();
+			private Sdp sdp = new Sdp();
 
-			String to, from, to_tag, from_tag, call_id, cseq_method,
+			private String to, from, to_tag, from_tag, call_id, cseq_method,
 					cseq_number, transport, source_addr, dest_addr,
 					source_port, dest_port, status, request_uri, request,
 					directionality, server_txn, client_txn, allow, contact,
@@ -106,25 +108,30 @@ public class updatedCapturer {
 					contact_length, min_expires_length,
 					proxy_authenticate_length, unsupported_length,
 					www_authenticate_length;
-
+			
+			private Map<String,String> Sources = new HashMap<String,String>();
+			private Map<String,String> Destinations = new HashMap<String,String>();
+			
+			private int src_txn, dst_txn;
+			
 			public void nextPacket(PcapPacket packet, String user) {
-				to = "";
-				from = "";
-				to_tag = "";
-				from_tag = "";
-				call_id = "";
-				cseq_method = "";
-				cseq_number = "";
-				transport = "";
-				source_addr = "";
-				dest_addr = "";
-				source_port = "";
-				dest_port = "";
-				request_uri = "";
-				request = "";
-				directionality = "";
-				server_txn = "";
-				client_txn = "";
+				to = "-";
+				from = "-";
+				to_tag = "-";
+				from_tag = "-";
+				call_id = "-";
+				cseq_method = "-";
+				cseq_number = "-";
+				transport = "-";
+				source_addr = "-";
+				dest_addr = "-";
+				source_port = "-";
+				dest_port = "-";
+				request_uri = "-";
+				request = "-";
+				directionality = "-";
+				server_txn = "-";
+				client_txn = "-";
 				allow = "";
 				allow_length = "";
 				contact = "";
@@ -260,9 +267,9 @@ public class updatedCapturer {
 						source_port = Integer.toString(tcp.source());
 						dest_port = Integer.toString(tcp.destination());
 					} else {
-						transport = "NULL";
-						source_port = "NULL";
-						dest_port = "NULL";
+						transport = "-";
+						source_port = "-";
+						dest_port = "-";
 					}
 				}
 				System.out.println("CLF Transport\t" + transport);
@@ -282,12 +289,23 @@ public class updatedCapturer {
 						// Get Destination Address if IP v6
 						dest_addr = FormatUtils.ip(ip6.destination());
 					} else {
-						source_addr = "NULL";
-						dest_addr = "NULL";
+						source_addr = "-";
+						dest_addr = "-";
 					}
 				}
 				System.out.println("CLF Source\t" + source_addr);
 				System.out.println("CLF Destin\t" + dest_addr);
+				
+				//Generate the Server and Client Txn values
+				if(!Sources.containsKey(source_addr)){
+					Sources.put(source_addr, "srv-txn_" + Integer.toString(src_txn));
+				}
+				server_txn = Sources.get(source_addr);
+				
+				if(!Destinations.containsKey(dest_addr)){
+					Destinations.put(dest_addr, "c_" + Integer.toString(dst_txn));
+				}
+				client_txn = Destinations.get(dest_addr);
 
 				// Get Directionality
 				// First get local (external) IP address
