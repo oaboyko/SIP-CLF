@@ -7,7 +7,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -69,25 +71,30 @@ public class offlineCapturer {
 			Ip4 ip4 = new Ip4();
 			Ip6 ip6 = new Ip6();
 			Sdp sdp = new Sdp();
+			
+			private Map<String,String> Sources = new HashMap<String,String>();
+			private Map<String,String> Destinations = new HashMap<String,String>();
+			private int srv_txn = 0;
+			private int clt_txn = 0;
 
 			public void nextPacket(JPacket packet, StringBuilder errbuf) {
-				to_uri = "";
-				from = "";
-				to_tag = "";
-				from_tag = "";
-				call_id = "";
-				cseq_method = "";
-				cseq_number = "";
-				transport = "";
-				source_addr = "";
-				dest_addr = "";
-				source_port = "";
-				dest_port = "";
-				request_uri = "";
-				message_type = "";
-				directionality = "";
-				server_txn = "";
-				client_txn = "";
+				to_uri = "-";
+				from = "-";
+				to_tag = "-";
+				from_tag = "-";
+				call_id = "-";
+				cseq_method = "-";
+				cseq_number = "-";
+				transport = "-";
+				source_addr = "-";
+				dest_addr = "-";
+				source_port = "-";
+				dest_port = "-";
+				request_uri = "-";
+				message_type = "-";
+				directionality = "-";
+				server_txn = "-";
+				client_txn = "-";
 				allow = "";
 				allow_length = "";
 				contact = "";
@@ -106,6 +113,32 @@ public class offlineCapturer {
 				fractional_seconds = 0;
 
 				System.out.println("************BEGIN SIP********************");
+				
+				// First get local (external) IP address
+				String ip_local = null;
+				URL ipEcho = null;
+				try {
+					ipEcho = new URL("http://ipecho.net/plain");
+				} catch (MalformedURLException e1) {
+					e1.printStackTrace();
+				}
+				BufferedReader reader = null;
+				try {
+					reader = new BufferedReader(new InputStreamReader(
+							ipEcho.openStream(), "UTF-8"));
+					for (String line; (line = reader.readLine()) != null;) {
+						ip_local = line;
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				} finally {
+					if (reader != null)
+						try {
+							reader.close();
+						} catch (IOException ignore) {
+
+						}
+				}
 
 				// Get the time stamp of the packet
 				time_stamp = packet.getCaptureHeader().seconds();
@@ -260,33 +293,26 @@ public class offlineCapturer {
 				}
 				System.out.println("CLF Source\t" + source_addr);
 				System.out.println("CLF Destin\t" + dest_addr);
+				
+				/*if(Sources.get(source_addr + ":" + source_port) != null && source_addr != ip_local){
+					server_txn = Sources.get(source_addr + ":" + source_port);
+				}
+				else{
+					Sources.put(source_addr + ":" + source_port, "s-tr-" + Integer.toString(srv_txn++));
+				}*/
+				
+				//Get the server and client Txn
+				server_txn = "s-tr-" + ip_local;
+				
+				if(Destinations.get(dest_addr + ":" + dest_port) != null && dest_addr != ip_local){
+					client_txn = Destinations.get(dest_addr + ":" + dest_port);
+				}
+				else{
+					Destinations.put(dest_addr + ":" + dest_port, "c-tr-" + Integer.toString(clt_txn++));
+					client_txn = Destinations.get(dest_addr + ":" + dest_port);
+				}
 
 				// Get Directionality
-				// First get local (external) IP address
-				String ip_local = null;
-				URL ipEcho = null;
-				try {
-					ipEcho = new URL("http://ipecho.net/plain");
-				} catch (MalformedURLException e1) {
-					e1.printStackTrace();
-				}
-				BufferedReader reader = null;
-				try {
-					reader = new BufferedReader(new InputStreamReader(ipEcho
-							.openStream(), "UTF-8"));
-					for (String line; (line = reader.readLine()) != null;) {
-						ip_local = line;
-					}
-				} catch (IOException e) {
-					e.printStackTrace();
-				} finally {
-					if (reader != null)
-						try {
-							reader.close();
-						} catch (IOException ignore) {
-
-						}
-				}
 				// Now compare local (external) IP address to the destination IP
 				// of the packet
 				if (dest_addr == ip_local) {
