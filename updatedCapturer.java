@@ -1,13 +1,15 @@
+package org.jnetpcap.examples.packet;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,17 @@ import org.jnetpcap.protocol.voip.Sip;
 import org.jnetpcap.protocol.voip.Sip.Fields;
 
 public class updatedCapturer {
+
+	public static String to_uri, from, to_tag, from_tag, call_id, cseq_method,
+			cseq_number, transport, source_addr, dest_addr, source_port,
+			dest_port, status, request_uri, message_type, directionality,
+			server_txn, client_txn, allow, contact, min_expires,
+			proxy_authenticate, unsupported, www_authenticate, sip_message,
+			sdp_length, allow_length, contact_length, min_expires_length,
+			proxy_authenticate_length, unsupported_length,
+			www_authenticate_length;
+
+	public static long time_stamp, fractional_seconds;
 
 	public static void main(String[] args) {
 		List<PcapIf> allDevs = new ArrayList<PcapIf>();
@@ -61,8 +74,9 @@ public class updatedCapturer {
 		// Timeout after X seconds
 		System.out.println("Please input the timeout duration in seconds: ");
 		int timeout = Integer.parseInt(System.console().readLine()) * 1000;
-		//Filter at specific port
-		System.out.println("Please input the port number on which you want to listen: ");
+		// Filter at specific port
+		System.out
+				.println("Please input the port number on which you want to listen: ");
 		int port_num = Integer.parseInt(System.console().readLine());
 
 		// Start live capture
@@ -71,7 +85,7 @@ public class updatedCapturer {
 
 		// BPF program assists in filtering in the SIP packets
 		PcapBpfProgram program = new PcapBpfProgram();
-		String expression = "dst port " + port_num +" and (tcp or udp)";
+		String expression = "dst port " + port_num + " and (tcp or udp)";
 
 		if (pcap == null) {
 			System.err.printf("Error while opening device for capture: "
@@ -92,46 +106,31 @@ public class updatedCapturer {
 
 		PcapPacketHandler<String> jpacketHandler = new PcapPacketHandler<String>() {
 
-			private Udp udp = new Udp();
-			private Tcp tcp = new Tcp();
-			private Sip sip = new Sip();
-			private Ip4 ip4 = new Ip4();
-			private Ip6 ip6 = new Ip6();
-			private Sdp sdp = new Sdp();
+			Udp udp = new Udp();
+			Tcp tcp = new Tcp();
+			Sip sip = new Sip();
+			Ip4 ip4 = new Ip4();
+			Ip6 ip6 = new Ip6();
+			Sdp sdp = new Sdp();
 
-			private String to, from, to_tag, from_tag, call_id, cseq_method,
-					cseq_number, transport, source_addr, dest_addr,
-					source_port, dest_port, status, request_uri, request,
-					directionality, server_txn, client_txn, allow, contact,
-					min_expires, proxy_authenticate, unsupported,
-					www_authenticate, sip_message, sdp_length, allow_length,
-					contact_length, min_expires_length,
-					proxy_authenticate_length, unsupported_length,
-					www_authenticate_length;
-			
-			private Map<String,String> Sources = new HashMap<String,String>();
-			private Map<String,String> Destinations = new HashMap<String,String>();
-			
-			private int src_txn, dst_txn;
-			
 			public void nextPacket(PcapPacket packet, String user) {
-				to = "-";
-				from = "-";
-				to_tag = "-";
-				from_tag = "-";
-				call_id = "-";
-				cseq_method = "-";
-				cseq_number = "-";
-				transport = "-";
-				source_addr = "-";
-				dest_addr = "-";
-				source_port = "-";
-				dest_port = "-";
-				request_uri = "-";
-				request = "-";
-				directionality = "-";
-				server_txn = "-";
-				client_txn = "-";
+				to_uri = "";
+				from = "";
+				to_tag = "";
+				from_tag = "";
+				call_id = "";
+				cseq_method = "";
+				cseq_number = "";
+				transport = "";
+				source_addr = "";
+				dest_addr = "";
+				source_port = "";
+				dest_port = "";
+				request_uri = "";
+				message_type = "";
+				directionality = "";
+				server_txn = "";
+				client_txn = "";
 				allow = "";
 				allow_length = "";
 				contact = "";
@@ -146,12 +145,18 @@ public class updatedCapturer {
 				www_authenticate = "";
 				sip_message = "";
 				sdp_length = "";
+				time_stamp = 0;
+				fractional_seconds = 0;
 
 				System.out.println("************BEGIN SIP********************");
 
 				// Get the time stamp of the packet
-				System.out.println("CLF TIME STAMP\t"
-						+ packet.getCaptureHeader().timestampInMillis());
+				time_stamp = packet.getCaptureHeader().seconds();
+
+				// Get fractional seconds in ms
+				fractional_seconds = packet.getCaptureHeader().nanos() / 1000000;
+				System.out.println("CLF TIME STAMP\t" + time_stamp + "."
+						+ fractional_seconds);
 
 				if (packet.hasHeader(sip)) {
 					String temp;
@@ -160,14 +165,15 @@ public class updatedCapturer {
 
 					// Get the From URI
 					temp = sip.fieldValue(Sip.Fields.From);
-					pattern = Pattern.compile("<(.*);.*>;tag=(\\w+([\\:\\-]?\\w+)+)");
+					pattern = Pattern
+							.compile("<(.*);.*>;tag=(\\w+([\\:\\-]?\\w+)+)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						from = matcher.group(1);
 						from_tag = matcher.group(2);
 					}
-					if(from == null || from_tag == null){
-							System.out.println("Malformed Packet on the From Tag");
+					if (from == null || from_tag == null) {
+						System.out.println("Malformed Packet on the From Tag");
 					}
 					System.out.println("CLF FROM\t" + from + "\nCLF FROM TAG\t"
 							+ from_tag);
@@ -177,9 +183,9 @@ public class updatedCapturer {
 					pattern = Pattern.compile("<(.*)>");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
-						to = matcher.group(1);
+						to_uri = matcher.group(1);
 					}
-					System.out.println("CLF TO\t\t" + to);
+					System.out.println("CLF TO\t\t" + to_uri);
 
 					// Get the To Tag
 					pattern = Pattern.compile("tag=(\\w+([\\:\\-]?\\w+)+)");
@@ -187,8 +193,8 @@ public class updatedCapturer {
 					while (matcher.find()) {
 						to_tag = matcher.group(1);
 					}
-					if(to_tag == null){
-							System.out.println("Malformed Packet on the From Tag");
+					if (to_tag == null) {
+						System.out.println("Malformed Packet on the From Tag");
 					}
 					System.out.println("CLF TO TAG\t" + to_tag);
 
@@ -228,11 +234,13 @@ public class updatedCapturer {
 
 					// Get Message Type
 					if (!request_uri.isEmpty()) {
-						request = "R";
-						System.out.println("CLF Message Type:\t " + request);
+						message_type = "R";
+						System.out.println("CLF Message Type:\t "
+								+ message_type);
 					} else {
-						request = "r";
-						System.out.println("CLF Message Type:\t " + request);
+						message_type = "r";
+						System.out.println("CLF Message Type:\t "
+								+ message_type);
 					}
 
 				}
@@ -295,17 +303,6 @@ public class updatedCapturer {
 				}
 				System.out.println("CLF Source\t" + source_addr);
 				System.out.println("CLF Destin\t" + dest_addr);
-				
-				//Generate the Server and Client Txn values
-				if(!Sources.containsKey(source_addr + ":" + Integer.toString(source_port))){
-					Sources.put(source_addr, "srv-txn_" + Integer.toString(src_txn));
-				}
-				server_txn = Sources.get(source_addr + ":" + Integer.toString(source_port));
-				
-				if(!Destinations.containsKey(dest_addr + ":" + Integer.toString(dest_port))){
-					Destinations.put(dest_addr, "c_" + Integer.toString(dst_txn));
-				}
-				client_txn = Destinations.get(dest_addr + ":" + Integer.toString(dest_port));
 
 				// Get Directionality
 				// First get local (external) IP address
@@ -479,13 +476,211 @@ public class updatedCapturer {
 				System.out.println("CLF SIP MESSAGE:\t" + sip_message);
 				System.out.println("CLF SDP LENGTH:\t" + sdp_length);
 
-				System.out.println("__________________________________________________________");
+				System.out
+						.println("__________________________________________________________");
 
 			}
 		};
 
 		pcap.loop(-1, jpacketHandler, "jnet");
 		pcap.close();
+		//logGenerator();
+	}
+
+	public static void logGenerator() {
+
+		// optional fields pointer (if there, point to x09 for first entry. if
+		// no optional fields, point to terminating line feed 0x0A)
+
+		// ----------------------------------------------------------------------------
+
+		// mandatory Fields
+		// fields must appear in the order listed by pointers, each field must
+		// be present. max field size = 4096 bytes.
+		// each field seperated by single tab (0x09). When written to log,
+		// change tab to space (0x20).
+		// if field is not present, put a dash. "-"
+		// if field fails to parse .. put "?"
+		// mandatory fields are all on one line in the log.
+		// ***VALUES CURRENTLY SET EQUAL TO EXAMPLE IN RFC 6873 for construction
+		// testing
+		long timestamp = time_stamp; // 10 bytes, decimal encoded. #seconds
+										// since unix epoch
+		long fractionalseconds = fractional_seconds; // 3bytes, decimal encoded
+														// fractional seconds.
+														// timestamp(0x2E
+														// ["."])fractionalseconds
+		/*
+		 * Flags (5 bytes) 1) R =request r = response 2) O= Original D =
+		 * Duplicate S = server is stateless 3) S = Sent message R = Recieved
+		 * Message 4) U=UDP T = TCP S = SCTP 5) E= Encrypted Message (TLS, DTLS,
+		 * etc) U = unencrypted
+		 */
+		String flags = message_type + "O" + directionality + transport + "U";
+		String cseqString = cseq_number + " " + cseq_method; // include cseq
+																// number and
+																// method name
+		String responsestatus; // set to single UTF-8 "-" (0x2D) for requests.
+		if (flags.substring(0, 1).equals("R")) {
+			responsestatus = "-";
+		} else
+			responsestatus = status; // put response status here.
+
+		String RURI = "sip:192.0.2.10";
+		String DstIP = "192.0.2.10:5060"; // ipaddres:portnumber --- ipv4:
+											// dotted decimal ipv6: mixed case
+											// (RFC5952 sect 5)
+		String SrcIP = "192.0.2.200:56485";
+		String ToURI = "sip:192.0.2.10";
+		String ToTag = null; // if not present, set to "-"
+		if (ToTag == null) {
+			ToTag = "-";
+		}
+
+		String FromURI = "sip:1001@example.com:5060";
+		String FromTag = from_tag; // if not present, "-"
+		if (FromTag == null) {
+			FromTag = "-";
+		}
+		String Callid = "DL70dff590c1-1079051554@example.com";
+		String serverTxn = "S1781761-88";
+		String clientTxn = "C67651-11";
+
+		String mandatory;
+		mandatory = timestamp + "." + fractionalseconds + "	" + flags + "	"
+				+ cseqString + "	" + responsestatus + "	" + RURI + "	" + DstIP
+				+ "	" + SrcIP + "	" + ToURI + "	" + ToTag + "	" + FromURI + "	"
+				+ FromTag + "	" + Callid + "	" + serverTxn + "	" + clientTxn
+				+ "\n";
+		// System.out.print(mandatory);
+
+		String version = "A"; // 1byte
+		String recordlength; // 6bytes (length of entire record, from version to
+								// terminating line feed 0x0A
+		// "," 0x2C between recordlength and pointers.
+
+		// --------------------------------------------------------------------------------------
+		// pointers are absolute. starting with beginning of file to first byte
+		// of desired entry. each will be >=82
+		// pointers. must be given byte length, insert preleading 0s as
+		// necessary.
+		// all pointers 3 bytes
+
+		// mandatory fields pointers-- no delimiters, 52 character hexadecimal
+		// encoded string.
+		int pointerstart = 82 + 1;
+		String cseqpoint = padZeros(Integer.toHexString(pointerstart));
+		String respStatuspoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1));
+		String rURIpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1));
+		String dstIPpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1));
+		String srcIPpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1));
+		String toURIpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1));
+		String toTagpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1));
+		String fromURIpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1));
+		String fromTagpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1));
+		String callIDpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1 + FromTag.length() + 1));
+		String serverTXNpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1 + FromTag.length() + 1 + Callid.length() + 1));
+		String clientTXNpoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1 + FromTag.length() + 1 + Callid.length() + 1
+				+ serverTxn.length() + 1));
+		// optfieldpointer points to linefeed, not first optional field.
+		String optFieldspoint = padZeros(Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1 + FromTag.length() + 1 + Callid.length() + 1
+				+ serverTxn.length() + 1 + clientTxn.length()));
+
+		String indexPointers = (cseqpoint + respStatuspoint + rURIpoint
+				+ dstIPpoint + srcIPpoint + toURIpoint + toTagpoint
+				+ fromURIpoint + fromTagpoint + callIDpoint + serverTXNpoint
+				+ clientTXNpoint + optFieldspoint + "\n").toUpperCase();
+		// System.out.println(indexPointers);
+
+		// recordlength (assuming no optional fields)
+		String prereclength = Integer.toHexString(pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1 + FromTag.length() + 1 + Callid.length() + 1
+				+ serverTxn.length() + 1 + clientTxn.length());
+		recordlength = ("000000".substring(0, 6 - prereclength.length()) + prereclength)
+				.toUpperCase();
+
+		// print CLF (pre tab/space switch).
+		String mandCLF = (version + recordlength + "," + indexPointers + mandatory);
+		System.out.println(mandCLF);
+		// System.out.println(Integer.toHexString(mandCLF.length()));
+
+		// Index pointer test printing:
+		// System.out.println(cseqpoint);
+		// System.out.println(respStatuspoint);
+		// System.out.println(rURIpoint);
+		// System.out.println(dstIPpoint);
+		// System.out.println(srcIPpoint);
+		// System.out.println( toURIpoint);
+		// System.out.println(toTagpoint);
+		// System.out.println( fromURIpoint);
+		// System.out.println(fromTagpoint);
+		// System.out.println(callIDpoint);
+		// System.out.println(serverTXNpoint);
+		// System.out.println(clientTXNpoint);
+		// System.out.println(optFieldspoint);
+
+		// -----------------------------------------------------------------------------------
+		// Optional Fields
+		// 00@00000000,length,00,value
+		String allowField = "-";
+		String contactField = "-";
+
+		if (!(allow.equalsIgnoreCase("-"))) {
+			allowField = "00@00000000," + allow_length + ",00,allow: " + allow;
+		}
+
+		if (mandCLF.length() != Integer.parseInt(prereclength, 16)) {
+			System.out.println("error, record length discrpency detected");
+		}
+
+	} // endclass
+
+	// create hex string of input String.
+	public static String toHex(String arg) throws UnsupportedEncodingException {
+		return String.format("%x", new BigInteger(1, arg.getBytes("UTF8")));
+	}
+
+	// pad hex string to 4 bytes.
+	public static String padZeros(String toPad) {
+
+		return "0000".substring(0, 4 - toPad.length()) + toPad;
 	}
 
 }
