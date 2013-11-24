@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -298,15 +297,15 @@ public class updatedCapturer {
 				System.out.println("CLF Destin\t" + dest_addr);
 				
 				//Generate the Server and Client Txn values
-				if(!Sources.containsKey(source_addr)){
+				if(!Sources.containsKey(source_addr + ":" + Integer.toString(source_port))){
 					Sources.put(source_addr, "srv-txn_" + Integer.toString(src_txn));
 				}
-				server_txn = Sources.get(source_addr);
+				server_txn = Sources.get(source_addr + ":" + Integer.toString(source_port));
 				
-				if(!Destinations.containsKey(dest_addr)){
+				if(!Destinations.containsKey(dest_addr + ":" + Integer.toString(dest_port))){
 					Destinations.put(dest_addr, "c_" + Integer.toString(dst_txn));
 				}
-				client_txn = Destinations.get(dest_addr);
+				client_txn = Destinations.get(dest_addr + ":" + Integer.toString(dest_port));
 
 				// Get Directionality
 				// First get local (external) IP address
