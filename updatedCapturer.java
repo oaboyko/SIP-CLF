@@ -570,12 +570,14 @@ public class updatedCapturer {
 		String serverTxn = "S1781761-88";
 		String clientTxn = "C67651-11";
 
+		//.replace("	", " ")
+		
 		String mandatory;
 		mandatory = timestamp + "." + fractionalseconds + "	" + flags + "	"
 				+ cseqString + "	" + responsestatus + "	" + RURI + "	" + DstIP
 				+ "	" + SrcIP + "	" + ToURI + "	" + ToTag + "	" + FromURI + "	"
 				+ FromTag + "	" + Callid + "	" + serverTxn + "	" + clientTxn
-				+ "\n";
+				;
 		// System.out.print(mandatory);
 
 		String version = "A"; // 1byte
@@ -636,7 +638,8 @@ public class updatedCapturer {
 				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
 				+ 1 + FromTag.length() + 1 + Callid.length() + 1
 				+ serverTxn.length() + 1));
-		// optfieldpointer points to linefeed, not first optional field.
+		// optfieldpointer points to linefeed, not first optional field (if there is no optional field)
+		
 		String optFieldspoint = padZeros(Integer.toHexString(pointerstart
 				+ cseqString.length() + 1 + responsestatus.length() + 1
 				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
@@ -650,20 +653,8 @@ public class updatedCapturer {
 				+ clientTXNpoint + optFieldspoint + "\n").toUpperCase();
 		// System.out.println(indexPointers);
 
-		// recordlength (assuming no optional fields)
-		String prereclength = Integer.toHexString(pointerstart
-				+ cseqString.length() + 1 + responsestatus.length() + 1
-				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
-				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
-				+ 1 + FromTag.length() + 1 + Callid.length() + 1
-				+ serverTxn.length() + 1 + clientTxn.length());
-		recordlength = ("000000".substring(0, 6 - prereclength.length()) + prereclength)
-				.toUpperCase();
 
-		// print CLF (pre tab/space switch).
-		String mandCLF = (version + recordlength + "," + indexPointers + mandatory);
-		System.out.println(mandCLF);
-		// System.out.println(Integer.toHexString(mandCLF.length()));
+
 
 		// Index pointer test printing:
 		// System.out.println(cseqpoint);
@@ -683,19 +674,80 @@ public class updatedCapturer {
 		// -----------------------------------------------------------------------------------
 		// Optional Fields
 		// 00@00000000,length,00,value
+		// generated starting at line 300
+		
+		
+		//allow
 		String allowField = "-";
-		String contactField = "-";
-
 		if (!(allow.equalsIgnoreCase("-"))) {
-			allowField = "00@00000000," + allow_length + ",00,allow: " + allow;
+			
+			allowField = "	00@00000000," + allow_length + ",00,allow: " + allow.replace("	"," ");
+			
 		}
-
-		if (mandCLF.length() != Integer.parseInt(prereclength, 16)) {
-			System.out.println("error, record length discrpency detected");
+			
+		//contact
+		String contactField = "-";
+		if (!(contact .equalsIgnoreCase("-"))) {
+			contactField = "	00@00000000," + contact_length + ",00,contact: " + contact.replace("	"," ");
 		}
+		
+		// min_expires
+		String min_expires_Field = "-";
+		if (!(min_expires.equalsIgnoreCase("-"))) {
+			min_expires_Field = "	00@00000000," + min_expires_length+ ",00,min-expires: " + min_expires.replace("	"," ");
+		}
+		
+		//proxy_authenticate
+		String proxy_authenticate_Field = "-";	
+		if (!(proxy_authenticate.equalsIgnoreCase("-"))) {
+			proxy_authenticate_Field= "	00@00000000," + proxy_authenticate_length + ",00,proxy-authenticate: " + proxy_authenticate.replace("	"," ");
+		}
+		
+		//unsupported
+		String unsupportedField = "-";		
+		if (!(unsupported.equalsIgnoreCase("-"))) {
+			unsupportedField = "	00@00000000," + unsupported_length + ",00,unsupported: " +unsupported.replace("	"," ");
+		}
+		//www_authenticate
+		String www_authenticate_Field = "-";
+		if (!(www_authenticate.equalsIgnoreCase("-"))) {
+			www_authenticate_Field = "	00@00000000," + www_authenticate_length + ",00,www-authenticate: " + www_authenticate.replace("	"," ");
+		}
+		
+		String optional = allowField+ contactField+min_expires_Field + proxy_authenticate_Field+unsupportedField+www_authenticate_Field;
+		
+		
+		
 
+
+		// recordlength (assuming no optional fields)
+		String prereclength = Integer.toHexString(  pointerstart
+				+ cseqString.length() + 1 + responsestatus.length() + 1
+				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+				+ 1 + FromTag.length() + 1 + Callid.length() + 1
+				+ serverTxn.length() + 1 + clientTxn.length()   
+				
+				
+				+   optional.length() +1 /* new linechar*/
+				
+				);
+		recordlength = ("000000".substring(0, 6 - prereclength.length()) + prereclength)
+				.toUpperCase();
+		
+		
+
+		
+		// print CLF (pre tab/space switch).
+		String CLF = (version + recordlength + "," + indexPointers + mandatory +optional +"\n");
+		System.out.println(CLF);
+
+		
+		if (CLF.length() != ( Integer.parseInt(prereclength, 16) - optional.length())) {
+			System.out.println("error, record length discrpency detected -- mandatory fields");
+		}
+		
 	} // endclass
-
 	// create hex string of input String.
 	public static String toHex(String arg) throws UnsupportedEncodingException {
 		return String.format("%x", new BigInteger(1, arg.getBytes("UTF8")));
