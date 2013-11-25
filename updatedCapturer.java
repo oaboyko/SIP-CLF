@@ -124,6 +124,7 @@ public class updatedCapturer {
 				to_tag = "-";
 				from_tag = "-";
 				call_id = "-";
+				status = "-";
 				cseq_method = "-";
 				cseq_number = "-";
 				transport = "-";
@@ -197,7 +198,7 @@ public class updatedCapturer {
 					// Get the From URI
 					temp = sip.fieldValue(Sip.Fields.From);
 					pattern = Pattern
-							.compile("<(.*);.*>;tag=(\\w+([\\:\\-]?\\w+)+)");
+							.compile("<(.*);?.*>;tag=(.*)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						from = matcher.group(1);
@@ -219,7 +220,7 @@ public class updatedCapturer {
 					System.out.println("CLF TO\t\t" + to_uri);
 
 					// Get the To Tag
-					pattern = Pattern.compile("tag=(\\w+([\\:\\-]?\\w+)+)");
+					pattern = Pattern.compile("tag=(.*)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						to_tag = matcher.group(1);

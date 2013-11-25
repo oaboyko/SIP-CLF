@@ -1,6 +1,3 @@
-package org.jnetpcap.examples.packet;
-
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -53,7 +50,7 @@ public class offlineCapturer {
 		int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
 		int timeout = 10 * 1000; // 10 seconds in millis
 
-		final String FILENAME = "C:/Documents and Settings/Vincent/workspace/Senior Design/jnetpcap-src-1.3.0-1/tests/aaa.pcap";
+		final String FILENAME = "C:/Users/oaboyko/Downloads/aaa.pcap";
 		final StringBuilder errbuf = new StringBuilder();
 		final Pcap pcap = Pcap.openOffline(FILENAME, errbuf);
 		if (pcap == null) {
@@ -83,6 +80,7 @@ public class offlineCapturer {
 				from = "-";
 				to_tag = "-";
 				from_tag = "-";
+				status = "-";
 				call_id = "-";
 				cseq_method = "-";
 				cseq_number = "-";
@@ -157,7 +155,7 @@ public class offlineCapturer {
 					// Get the From URI
 					temp = sip.fieldValue(Sip.Fields.From);
 					pattern = Pattern
-							.compile("<(.*);.*>;tag=(\\w+([\\:\\-]?\\w+)+)");
+							.compile("<(.*);?.*>;tag=(.*)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						from = matcher.group(1);
@@ -179,7 +177,7 @@ public class offlineCapturer {
 					System.out.println("CLF TO\t\t" + to_uri);
 
 					// Get the To Tag
-					pattern = Pattern.compile("tag=(\\w+([\\:\\-]?\\w+)+)");
+					pattern = Pattern.compile("tag=(.*)");
 					matcher = pattern.matcher(temp);
 					while (matcher.find()) {
 						to_tag = matcher.group(1);
