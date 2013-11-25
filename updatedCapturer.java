@@ -1,4 +1,6 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -682,37 +684,37 @@ public class updatedCapturer {
 		String allowField = "-";
 		if (!(allow.equalsIgnoreCase("-"))) {
 			
-			allowField = "	00@00000000," + allow_length + ",00,allow: " + allow.replace("	"," ");
+			allowField = "\t00@00000000," + allow_length + ",00,allow: " + allow.replace("	"," ");
 			
 		}
 			
 		//contact
 		String contactField = "-";
 		if (!(contact .equalsIgnoreCase("-"))) {
-			contactField = "	00@00000000," + contact_length + ",00,contact: " + contact.replace("	"," ");
+			contactField = "\t00@00000000," + contact_length + ",00,contact: " + contact.replace("\t"," ");
 		}
 		
 		// min_expires
 		String min_expires_Field = "-";
 		if (!(min_expires.equalsIgnoreCase("-"))) {
-			min_expires_Field = "	00@00000000," + min_expires_length+ ",00,min-expires: " + min_expires.replace("	"," ");
+			min_expires_Field = "\t00@00000000," + min_expires_length+ ",00,min-expires: " + min_expires.replace("\t"," ");
 		}
 		
 		//proxy_authenticate
 		String proxy_authenticate_Field = "-";	
 		if (!(proxy_authenticate.equalsIgnoreCase("-"))) {
-			proxy_authenticate_Field= "	00@00000000," + proxy_authenticate_length + ",00,proxy-authenticate: " + proxy_authenticate.replace("	"," ");
+			proxy_authenticate_Field= "\t00@00000000," + proxy_authenticate_length + ",00,proxy-authenticate: " + proxy_authenticate.replace("\t"," ");
 		}
 		
 		//unsupported
 		String unsupportedField = "-";		
 		if (!(unsupported.equalsIgnoreCase("-"))) {
-			unsupportedField = "	00@00000000," + unsupported_length + ",00,unsupported: " +unsupported.replace("	"," ");
+			unsupportedField = "\t00@00000000," + unsupported_length + ",00,unsupported: " +unsupported.replace("\t"," ");
 		}
 		//www_authenticate
 		String www_authenticate_Field = "-";
 		if (!(www_authenticate.equalsIgnoreCase("-"))) {
-			www_authenticate_Field = "	00@00000000," + www_authenticate_length + ",00,www-authenticate: " + www_authenticate.replace("	"," ");
+			www_authenticate_Field = "\t00@00000000," + www_authenticate_length + ",00,www-authenticate: " + www_authenticate.replace("\t"," ");
 		}
 		
 		String optional = allowField+ contactField+min_expires_Field + proxy_authenticate_Field+unsupportedField+www_authenticate_Field;
@@ -741,12 +743,21 @@ public class updatedCapturer {
 		
 		// print CLF (pre tab/space switch).
 		String CLF = (version + recordlength + "," + indexPointers + mandatory +optional +"\n");
-		System.out.println(CLF);
+		//System.out.println(CLF);
 
 		
-		if (CLF.length() != ( Integer.parseInt(prereclength, 16) - optional.length())) {
-			System.out.println("error, record length discrpency detected -- mandatory fields");
-		}
+//		if (CLF.length() != ( Integer.parseInt(prereclength, 16) - optional.length())) {
+//			System.out.println("error, record length discrpency detected -- mandatory fields");
+//		}
+		
+        try {
+        BufferedWriter out = new BufferedWriter(new FileWriter("LogFile.txt"));
+           
+                out.write(CLF);
+                out.close();
+        } catch (IOException e) {
+        	System.out.println("error writing to file");
+        }
 		
 	} // endclass
 	// create hex string of input String.
