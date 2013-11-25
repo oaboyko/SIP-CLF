@@ -1,4 +1,6 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
@@ -40,12 +42,15 @@ public class offlineCapturer {
 			proxy_authenticate_length, unsupported_length,
 			www_authenticate_length;
 
+	public static BufferedWriter out;
+	
 	public static long time_stamp, fractional_seconds;
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 
 		// else if(captureType.equalsIgnoreCase("N")){
 
+		out = new BufferedWriter(new FileWriter("LogFile.txt"));
 		int snaplen = 64 * 1024; // Capture all packets, no trucation
 		int flags = Pcap.MODE_PROMISCUOUS; // capture all packets
 		int timeout = 10 * 1000; // 10 seconds in millis
@@ -59,7 +64,7 @@ public class offlineCapturer {
 		}
 
 		// System.out.println("How many packets do you want to parse?");
-		int numOfPackets = 19; // Integer.parseInt(System.console().readLine());
+		int numOfPackets = 223; // Integer.parseInt(System.console().readLine());
 
 		pcap.loop(numOfPackets, new JPacketHandler<StringBuilder>() {
 
@@ -203,7 +208,7 @@ public class offlineCapturer {
 							+ "\nCLF CSeq Method\t" + cseq_method);
 
 					String sip_header = sip.getUTF8String(0, sip.size());
-					System.out.println("SIP: " + sip_header);
+					//System.out.println("SIP: " + sip_header);
 
 					// Get Status
 					pattern = Pattern.compile("SIP/\\d+.\\d+ (\\d+) ");
@@ -233,6 +238,10 @@ public class offlineCapturer {
 					}
 
 				}
+				else{
+					return;
+				}
+				
 
 				// get SDP message body
 				if (packet.hasHeader(sdp)) {
@@ -245,6 +254,9 @@ public class offlineCapturer {
 							sdp_length = "0".concat(sdp_length);
 						}
 					}
+					sip_message = sip_message.replaceAll("\r\n", "%0D%0A");
+					sip_message = sip_message.replaceAll("\n", "%0D%0A");
+					System.out.println(sip_message);
 
 				}
 
@@ -460,12 +472,13 @@ public class offlineCapturer {
 
 				System.out
 						.println("__________________________________________________________");
-
+				logGenerator();
 			}
 		}, errbuf);
 
+		out.close();
+		
 		pcap.close();
-
 	}
 	public static void logGenerator() {
 
@@ -506,27 +519,27 @@ public class offlineCapturer {
 		} else
 			responsestatus = status; // put response status here.
 
-		String RURI = "sip:192.0.2.10";
-		String DstIP = "192.0.2.10:5060"; // ipaddres:portnumber --- ipv4:
+		String RURI = request_uri;
+		String DstIP = dest_addr; // ipaddres:portnumber --- ipv4:
 											// dotted decimal ipv6: mixed case
 											// (RFC5952 sect 5)
-		String SrcIP = "192.0.2.200:56485";
-		String ToURI = "sip:192.0.2.10";
-		String ToTag = null; // if not present, set to "-"
+		String SrcIP = source_addr;
+		String ToURI = to_uri;
+		String ToTag = to_tag; // if not present, set to "-"
 		if (ToTag == null) {
 			ToTag = "-";
 		}
-
-		String FromURI = "sip:1001@example.com:5060";
+		
+		String FromURI = from;
 		String FromTag = from_tag; // if not present, "-"
 		if (FromTag == null) {
 			FromTag = "-";
 		}
-		String Callid = "DL70dff590c1-1079051554@example.com";
-		String serverTxn = "S1781761-88";
-		String clientTxn = "C67651-11";
+		String Callid = call_id;
+		String serverTxn = server_txn;
+		String clientTxn = client_txn;
 
-		//.replace("	", " ")
+		//.replace("", " ")
 		
 		String mandatory;
 		mandatory = timestamp + "." + fractionalseconds + "	" + flags + "	"
@@ -629,90 +642,101 @@ public class offlineCapturer {
 
 		// -----------------------------------------------------------------------------------
 		// Optional Fields
-		// 00@00000000,length,00,value
-
-
-		//allow
-		String allowField = "-";
-		if (!(allow.equalsIgnoreCase("-"))) {
-			
-			allowField = "	00@00000000," + allow_length + ",00,allow: " + allow.replace("	"," ");
-			
-		}
-			
-		//contact
-		String contactField = "-";
-		if (!(contact .equalsIgnoreCase("-"))) {
-			contactField = "	00@00000000," + contact_length + ",00,contact: " + contact.replace("	"," ");
-		}
-		
-		// min_expires
-		String min_expires_Field = "-";
-		if (!(min_expires.equalsIgnoreCase("-"))) {
-			min_expires_Field = "	00@00000000," + min_expires_length+ ",00,min-expires: " + min_expires.replace("	"," ");
-		}
-		
-		//proxy_authenticate
-		String proxy_authenticate_Field = "-";	
-		if (!(proxy_authenticate.equalsIgnoreCase("-"))) {
-			proxy_authenticate_Field= "	00@00000000," + proxy_authenticate_length + ",00,proxy-authenticate: " + proxy_authenticate.replace("	"," ");
-		}
-		
-		//unsupported
-		String unsupportedField = "-";		
-		if (!(unsupported.equalsIgnoreCase("-"))) {
-			unsupportedField = "	00@00000000," + unsupported_length + ",00,unsupported: " +unsupported.replace("	"," ");
-		}
-		//www_authenticate
-		String www_authenticate_Field = "-";
-		if (!(www_authenticate.equalsIgnoreCase("-"))) {
-			www_authenticate_Field = "	00@00000000," + www_authenticate_length + ",00,www-authenticate: " + www_authenticate.replace("	"," ");
-		}
-		
-		String optional = allowField+ contactField+min_expires_Field + proxy_authenticate_Field+unsupportedField+www_authenticate_Field;
-		
-		
-		
-
-
-		// recordlength (assuming no optional fields)
-		String prereclength = Integer.toHexString(  pointerstart
-				+ cseqString.length() + 1 + responsestatus.length() + 1
-				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
-				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
-				+ 1 + FromTag.length() + 1 + Callid.length() + 1
-				+ serverTxn.length() + 1 + clientTxn.length()   
+				// 00@00000000,length,00,value
+				// generated starting at line 300
 				
 				
-				+   optional.length() +1 /* new linechar*/
+				//allow
+				String allowField = "\t-";
+				if (!(allow.equalsIgnoreCase("-"))) {
+					
+					allowField = "\t00@00000000," + allow_length + ",00,allow: " + allow.replace("\t"," ");
+					
+				}
+					
+				//contact
+				String contactField = "\t-";
+				if (!(contact .equalsIgnoreCase("-"))) {
+					contactField = "\t00@00000000," + contact_length + ",00,contact: " + contact.replace("\t"," ");
+				}
 				
-				);
-		recordlength = ("000000".substring(0, 6 - prereclength.length()) + prereclength)
-				.toUpperCase();
-		
-		
+				// min_expires
+				String min_expires_Field = "\t-";
+				if (!(min_expires.equalsIgnoreCase("-"))) {
+					min_expires_Field = "\t00@00000000," + min_expires_length+ ",00,min-expires: " + min_expires.replace("\t"," ");
+				}
+				
+				String message_field = "\t-";
+				if (!(sip_message.equalsIgnoreCase("-"))) {
+					message_field = "\t01@00000000," + sdp_length+ ",00,application/sdp: " + sip_message.replace("\t"," ");
+				}
+				
+				//proxy_authenticate
+				String proxy_authenticate_Field = "\t-";	
+				if (!(proxy_authenticate.equalsIgnoreCase("-"))) {
+					proxy_authenticate_Field= "\t00@00000000," + proxy_authenticate_length + ",00,proxy-authenticate: " + proxy_authenticate.replace("\t"," ");
+				}
+				
+				//unsupported
+				String unsupportedField = "\t-";		
+				if (!(unsupported.equalsIgnoreCase("-"))) {
+					unsupportedField = "\t00@00000000," + unsupported_length + ",00,unsupported: " +unsupported.replace("\t"," ");
+				}
+				//www_authenticate
+				String www_authenticate_Field = "\t-";
+				if (!(www_authenticate.equalsIgnoreCase("-"))) {
+					www_authenticate_Field = "\t00@00000000," + www_authenticate_length + ",00,www-authenticate: " + www_authenticate.replace("\t"," ");
+				}
+				
+				String optional = allowField+ contactField+min_expires_Field + proxy_authenticate_Field+unsupportedField+www_authenticate_Field + message_field;
+				
+				
+				
 
-		
-		// print CLF (pre tab/space switch).
-		String CLF = (version + recordlength + "," + indexPointers + mandatory +optional +"\n");
-		System.out.println(CLF);
 
-		
-		if (CLF.length() != ( Integer.parseInt(prereclength, 16) - optional.length())) {
-			System.out.println("error, record length discrpency detected -- mandatory fields");
+				// recordlength (assuming no optional fields)
+				String prereclength = Integer.toHexString(  pointerstart
+						+ cseqString.length() + 1 + responsestatus.length() + 1
+						+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
+						+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
+						+ 1 + FromTag.length() + 1 + Callid.length() + 1
+						+ serverTxn.length() + 1 + clientTxn.length()   
+						
+						
+						+   optional.length() +1 /* new linechar*/
+						
+						);
+				recordlength = ("000000".substring(0, 6 - prereclength.length()) + prereclength)
+						.toUpperCase();
+				
+				
+
+				
+				// print CLF (pre tab/space switch).
+				String CLF = (version + recordlength + "," + indexPointers + mandatory +optional +"\n");
+				//System.out.println(CLF);
+
+				
+//				if (CLF.length() != ( Integer.parseInt(prereclength, 16) - optional.length())) {
+//					System.out.println("error, record length discrpency detected -- mandatory fields");
+//				}
+				
+		        try {		           
+		                out.write(CLF);
+		        } catch (IOException e) {
+		        	System.out.println("error writing to file");
+		        }
+				
+			} // endclass
+			// create hex string of input String.
+			public static String toHex(String arg) throws UnsupportedEncodingException {
+				return String.format("%x", new BigInteger(1, arg.getBytes("UTF8")));
+			}
+
+			// pad hex string to 4 bytes.
+			public static String padZeros(String toPad) {
+
+				return "0000".substring(0, 4 - toPad.length()) + toPad;
+			}
+
 		}
-		
-	} // endclass
-
-	// create hex string of input String.
-	public static String toHex(String arg) throws UnsupportedEncodingException {
-		return String.format("%x", new BigInteger(1, arg.getBytes("UTF8")));
-	}
-
-	// pad hex string to 4 bytes.
-	public static String padZeros(String toPad) {
-
-		return "0000".substring(0, 4 - toPad.length()) + toPad;
-	}
-
-}
