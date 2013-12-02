@@ -1,3 +1,5 @@
+
+
 /* NC State University ECE Senior Design
  * Project: SIP CLF File Generator
  * Authors: Oleksandr Boyko (oaboyko@ncsu.edu)
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -403,6 +406,8 @@ public class SIPCLFGenerator {
 	};
 	
 	public static void main(String[] args) throws Exception {
+		
+		  Scanner scan = new Scanner(System.in); //use scanner to allow functionality in IDE
 		List<PcapIf> allDevs = new ArrayList<PcapIf>();
 		StringBuilder errBuf = new StringBuilder();
 		out = new BufferedWriter(new FileWriter("SIP.log"));
@@ -419,15 +424,17 @@ public class SIPCLFGenerator {
 		}
 		
 		Pcap pcap = null;
-		
+//		scan.nextLine()
 		System.out.println("Please select the number for type of capture:\n  [1] Offline\n  [2] Online");
-		capt_type = Integer.parseInt(System.console().readLine());
+		//capt_type = Integer.parseInt(System.console().readLine());
+		capt_type = Integer.parseInt(scan.nextLine());
 		System.out.println("Please enter the number of packets to be processed (-1 for \"all\")");
-		num_of_packets = Integer.parseInt(System.console().readLine());
-		
+	//	num_of_packets = Integer.parseInt(System.console().readLine());
+		num_of_packets = Integer.parseInt(scan.nextLine());
 		if(capt_type == 1){
 			System.out.println("Please input the absolute path to the input capture file: ");
-			final String FILENAME = System.console().readLine();
+			//final String FILENAME = System.console().readLine();
+			final String FILENAME = scan.nextLine();
 			pcap = Pcap.openOffline(FILENAME, errBuf);
 		}
 		else{
@@ -440,11 +447,11 @@ public class SIPCLFGenerator {
 				System.out.printf("#%d: %s [%s]\n", i++, device.getName(),
 						description);
 			}
-	
+		
 			// Make the user manually select the preferred interface
 			System.out.println("Please provide the device number:");
-			int devNum = Integer.parseInt(System.console().readLine());
-	
+		//	int devNum = Integer.parseInt(System.().readLine());
+			int devNum = Integer.parseInt(scan.nextLine());
 			// Set default capture interface
 			PcapIf device = allDevs.get(devNum);
 			// Set maximum size of the packet
@@ -453,14 +460,16 @@ public class SIPCLFGenerator {
 			int flags = Pcap.MODE_PROMISCUOUS;
 			// Timeout after X seconds
 			System.out.println("Please input the timeout duration in seconds: ");
-			int timeout = Integer.parseInt(System.console().readLine()) * 1000;
+			//int timeout = Integer.parseInt(System.console().readLine()) * 1000;
+			int timeout = Integer.parseInt(scan.nextLine()) * 1000;
 			// Start live capture
 			pcap = Pcap.openLive(device.getName(), p_length, flags, timeout,
 					errBuf);
 			// Filter at specific port
 			System.out
 					.println("Please input the port number on which you want to listen: ");
-			int port_num = Integer.parseInt(System.console().readLine());
+	//		int port_num = Integer.parseInt(System.console().readLine());
+			int port_num = Integer.parseInt(scan.nextLine());
 
 			// BPF program assists in filtering in the SIP packets
 			PcapBpfProgram program = new PcapBpfProgram();
