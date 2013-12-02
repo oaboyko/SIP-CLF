@@ -3,10 +3,10 @@ JFLAGS=-cp .:jnetpcap.jar
 
 
 all:	
-	@javac $(JCFLAGS) Capturer.java	
+	@javac $(JCFLAGS) SIPCLFGenerator.java	
 
-run:	Capturer.class
-	@sudo java $(JFLAGS) Capturer
+run:	SIPCLFGenerator.class
+	@sudo java $(JFLAGS) SIPCLFGenerator
 
 clean:
-	@rm -f Capturer*.class
+	@rm -f SIPCLFGenerator*.class
