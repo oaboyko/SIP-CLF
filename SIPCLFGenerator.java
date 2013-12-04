@@ -237,12 +237,12 @@ public class SIPCLFGenerator {
 
 			// Get Transport, Source Port # and Destination Port #
 			if (packet.hasHeader(udp)) {
-				transport = "udp";
+				transport = "U";
 				source_port = Integer.toString(udp.source());
 				dest_port = Integer.toString(udp.destination());
 			} else {
 				if (packet.hasHeader(tcp)) {
-					transport = "tcp";
+					transport = "T";
 					source_port = Integer.toString(tcp.source());
 					dest_port = Integer.toString(tcp.destination());
 				} else {
