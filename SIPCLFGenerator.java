@@ -1,23 +1,23 @@
-
-
 /* NC State University ECE Senior Design
  * Project: SIP CLF File Generator
  * Authors: Oleksandr Boyko (oaboyko@ncsu.edu)
- * 			Vincent Sanders (vmsander@ncsu.edu)
- * 			Ethan Smith		(essmith2@ncsu.edu)
+ *                         Vincent Sanders (vmsander@ncsu.edu)
+ *                         Ethan Smith                (essmith2@ncsu.edu)
  * Date:    12/01/2013 
-*/
+ */
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,12 +47,18 @@ public class SIPCLFGenerator {
 			proxy_authenticate, unsupported, www_authenticate, sip_message,
 			sdp_length, allow_length, contact_length, min_expires_length,
 			proxy_authenticate_length, unsupported_length,
-			www_authenticate_length, sip_header;
+			www_authenticate_length, sip_header, BEB;
 
 	public static long time_stamp, fractional_seconds;
-	
-	public static BufferedWriter out;
-	
+
+	public static int YES = 1;
+	public static int NO = 0;
+	public static int firstWrite = YES;
+	public static int sipPackets = 0;
+
+	public static java.util.Date date = new java.util.Date();
+	public final static long dateAppend = date.getTime();
+
 	public static PcapPacketHandler<String> jpacketHandler = new PcapPacketHandler<String>() {
 
 		Udp udp = new Udp();
@@ -61,9 +67,9 @@ public class SIPCLFGenerator {
 		Ip4 ip4 = new Ip4();
 		Ip6 ip6 = new Ip6();
 		Sdp sdp = new Sdp();
-		
-		private Map<String,String> Sources = new HashMap<String,String>();
-		private Map<String,String> Destinations = new HashMap<String,String>();
+
+		private Map<String, String> Sources = new HashMap<String, String>();
+		private Map<String, String> Destinations = new HashMap<String, String>();
 		private int srv_txn = 0;
 		private int clt_txn = 0;
 
@@ -102,7 +108,7 @@ public class SIPCLFGenerator {
 			sdp_length = "";
 			time_stamp = 0;
 			fractional_seconds = 0;
-			
+
 			// First get local (external) IP address
 			String ip_local = null;
 			URL ipEcho = null;
@@ -142,8 +148,7 @@ public class SIPCLFGenerator {
 
 				// Get the From URI
 				temp = sip.fieldValue(Sip.Fields.From);
-				pattern = Pattern
-						.compile("<(.*);?.*>;tag=(.*)");
+				pattern = Pattern.compile("<(.*);?.*>;tag=(.*)");
 				matcher = pattern.matcher(temp);
 				while (matcher.find()) {
 					from = matcher.group(1);
@@ -161,7 +166,6 @@ public class SIPCLFGenerator {
 					to_uri = matcher.group(1);
 				}
 
-
 				// Get the To Tag
 				pattern = Pattern.compile("tag=(.*)");
 				matcher = pattern.matcher(temp);
@@ -172,10 +176,8 @@ public class SIPCLFGenerator {
 					System.out.println("Malformed Packet on the From Tag");
 				}
 
-
 				// Get the Call ID
 				call_id = sip.fieldValue(Sip.Fields.Call_ID);
-
 
 				// Get the CSeq Method
 				temp = sip.fieldValue(Sip.Fields.CSeq);
@@ -202,7 +204,6 @@ public class SIPCLFGenerator {
 					request_uri = matcher.group(1);
 				}
 
-
 				// Get Message Type
 				if (!request_uri.isEmpty()) {
 					message_type = "R";
@@ -223,6 +224,9 @@ public class SIPCLFGenerator {
 						sdp_length = "0".concat(sdp_length);
 					}
 				}
+
+				sip_message = sip_message.replaceAll("\r\n", "%0D%0A");
+				sip_message = sip_message.replaceAll("\n", "%0D%0A");
 
 			}
 
@@ -266,20 +270,23 @@ public class SIPCLFGenerator {
 				}
 			}
 
-			//Get the server and client Txn
-			if(Sources.get(source_addr + ":" + source_port) == null || source_addr == ip_local){
-				Sources.put(source_addr + ":" + source_port, "s-tr-" + Integer.toString(srv_txn++));
+			// Get the server and client Txn
+			if (Sources.get(source_addr + ":" + source_port) == null
+					|| source_addr == ip_local) {
+				Sources.put(source_addr + ":" + source_port,
+						"s-tr-" + Integer.toString(srv_txn++));
 			}
 			server_txn = Sources.get(source_addr + ":" + source_port);
-			
-			if(Destinations.get(dest_addr + ":" + dest_port) != null && dest_addr != ip_local){
+
+			if (Destinations.get(dest_addr + ":" + dest_port) != null
+					&& dest_addr != ip_local) {
+				client_txn = Destinations.get(dest_addr + ":" + dest_port);
+			} else {
+				Destinations.put(dest_addr + ":" + dest_port,
+						"c-tr-" + Integer.toString(clt_txn++));
 				client_txn = Destinations.get(dest_addr + ":" + dest_port);
 			}
-			else{
-				Destinations.put(dest_addr + ":" + dest_port, "c-tr-" + Integer.toString(clt_txn++));
-				client_txn = Destinations.get(dest_addr + ":" + dest_port);
-			}
-			
+
 			// Get Directionality
 			// Now compare local (external) IP address to the destination IP
 			// of the packet
@@ -337,8 +344,7 @@ public class SIPCLFGenerator {
 				min_expires_length = "-";
 			} else {
 				min_expires = sip.fieldValue(Fields.Min_Expires);
-				min_expires_length = Integer.toHexString(min_expires
-						.length());
+				min_expires_length = Integer.toHexString(min_expires.length());
 				// add leading zeros
 				if (min_expires_length.length() < 4) {
 					while (min_expires_length.length() < 4) {
@@ -352,8 +358,7 @@ public class SIPCLFGenerator {
 				proxy_authenticate = "-";
 				proxy_authenticate_length = "-";
 			} else {
-				proxy_authenticate = sip
-						.fieldValue(Fields.Proxy_Authenticate);
+				proxy_authenticate = sip.fieldValue(Fields.Proxy_Authenticate);
 				proxy_authenticate_length = Integer
 						.toHexString(proxy_authenticate.length());
 				// add leading zeros
@@ -371,8 +376,7 @@ public class SIPCLFGenerator {
 				unsupported_length = "-";
 			} else {
 				unsupported = sip.fieldValue(Fields.Unsupported);
-				unsupported_length = Integer.toHexString(unsupported
-						.length());
+				unsupported_length = Integer.toHexString(unsupported.length());
 				// add leading zeros
 				if (unsupported_length.length() < 4) {
 					while (unsupported_length.length() < 4) {
@@ -380,15 +384,15 @@ public class SIPCLFGenerator {
 					}
 				}
 			}
-			
+
 			// Get www-authenticate field
 			if (sip.fieldValue(Fields.WWW_Authenticate) == null) {
 				www_authenticate = "-";
 				www_authenticate_length = "-";
 			} else {
 				www_authenticate = sip.fieldValue(Fields.WWW_Authenticate);
-				www_authenticate_length = Integer
-						.toHexString(www_authenticate.length());
+				www_authenticate_length = Integer.toHexString(www_authenticate
+						.length());
 				// add leading zeros
 				if (www_authenticate_length.length() < 4) {
 					while (www_authenticate_length.length() < 4) {
@@ -399,19 +403,20 @@ public class SIPCLFGenerator {
 			}
 
 			// Print sip message
-			if(packet.hasHeader(sip)){
+			if (packet.hasHeader(sip)) {
+				sipPackets++;
 				logGenerator();
 			}
 		}
 	};
-	
+
 	public static void main(String[] args) throws Exception {
-		
-		  Scanner scan = new Scanner(System.in); //use scanner to allow functionality in IDE
+
+		Scanner scan = new Scanner(System.in); // use scanner to allow
+												// functionality in IDE
 		List<PcapIf> allDevs = new ArrayList<PcapIf>();
 		StringBuilder errBuf = new StringBuilder();
-		out = new BufferedWriter(new FileWriter("SIP.log"));
-		
+
 		int num_of_packets;
 		int capt_type = 2;
 
@@ -422,22 +427,24 @@ public class SIPCLFGenerator {
 					errBuf.toString());
 			return;
 		}
-		
+
 		Pcap pcap = null;
-//		scan.nextLine()
-		System.out.println("Please select the number for type of capture:\n  [1] Offline\n  [2] Online");
-		//capt_type = Integer.parseInt(System.console().readLine());
+		// scan.nextLine()
+		System.out
+				.println("Please select the number for type of capture:\n  [1] Offline\n  [2] Online");
+		// capt_type = Integer.parseInt(System.console().readLine());
 		capt_type = Integer.parseInt(scan.nextLine());
-		System.out.println("Please enter the number of packets to be processed (-1 for \"all\")");
-	//	num_of_packets = Integer.parseInt(System.console().readLine());
+		System.out
+				.println("Please enter the number of packets to be processed (-1 for \"all\")");
+		// num_of_packets = Integer.parseInt(System.console().readLine());
 		num_of_packets = Integer.parseInt(scan.nextLine());
-		if(capt_type == 1){
-			System.out.println("Please input the absolute path to the input capture file: ");
-			//final String FILENAME = System.console().readLine();
+		if (capt_type == 1) {
+			System.out
+					.println("Please input the absolute path to the input capture file: ");
+			// final String FILENAME = System.console().readLine();
 			final String FILENAME = scan.nextLine();
 			pcap = Pcap.openOffline(FILENAME, errBuf);
-		}
-		else{
+		} else {
 			// Show all devices to the user
 			System.out.println("System devices:");
 			int i = 0;
@@ -447,10 +454,10 @@ public class SIPCLFGenerator {
 				System.out.printf("#%d: %s [%s]\n", i++, device.getName(),
 						description);
 			}
-		
+
 			// Make the user manually select the preferred interface
 			System.out.println("Please provide the device number:");
-		//	int devNum = Integer.parseInt(System.().readLine());
+			// int devNum = Integer.parseInt(System.().readLine());
 			int devNum = Integer.parseInt(scan.nextLine());
 			// Set default capture interface
 			PcapIf device = allDevs.get(devNum);
@@ -459,8 +466,10 @@ public class SIPCLFGenerator {
 			// Capture in "promiscuous" mode
 			int flags = Pcap.MODE_PROMISCUOUS;
 			// Timeout after X seconds
-			System.out.println("Please input the timeout duration in seconds: ");
-			//int timeout = Integer.parseInt(System.console().readLine()) * 1000;
+			System.out
+					.println("Please input the timeout duration in seconds: ");
+			// int timeout = Integer.parseInt(System.console().readLine()) *
+			// 1000;
 			int timeout = Integer.parseInt(scan.nextLine()) * 1000;
 			// Start live capture
 			pcap = Pcap.openLive(device.getName(), p_length, flags, timeout,
@@ -468,14 +477,14 @@ public class SIPCLFGenerator {
 			// Filter at specific port
 			System.out
 					.println("Please input the port number on which you want to listen: ");
-	//		int port_num = Integer.parseInt(System.console().readLine());
+			// int port_num = Integer.parseInt(System.console().readLine());
 			int port_num = Integer.parseInt(scan.nextLine());
 
 			// BPF program assists in filtering in the SIP packets
 			PcapBpfProgram program = new PcapBpfProgram();
 			String expression = "dst port " + port_num + " and (tcp or udp)";
 
-			if(pcap == null) {
+			if (pcap == null) {
 				System.err.printf("Error while opening device for capture: "
 						+ errBuf.toString());
 				return;
@@ -493,9 +502,19 @@ public class SIPCLFGenerator {
 			}
 		}
 
+		System.out.println("SIP CLF TOOL: PARSING");
 		pcap.loop(num_of_packets, jpacketHandler, "jnet");
-		out.close();
 		pcap.close();
+		if (num_of_packets == -1) {
+			System.out
+					.println("SIP CLF TOOL: FINISHED PARSING ENTIRE PACKET CAPTURE..."
+							+ sipPackets + " WERE SIP PACKETS");
+		} else {
+			System.out.println("SIP CLF TOOL: FINISHED PARSING "
+					+ num_of_packets + " PACKETS..." + sipPackets
+					+ " WERE SIP PACKETS");
+		}
+
 	}
 
 	public static void logGenerator() {
@@ -538,8 +557,8 @@ public class SIPCLFGenerator {
 
 		String RURI = request_uri;
 		String DstIP = dest_addr; // ipaddres:portnumber --- ipv4:
-											// dotted decimal ipv6: mixed case
-											// (RFC5952 sect 5)
+									// dotted decimal ipv6: mixed case
+									// (RFC5952 sect 5)
 		String SrcIP = source_addr;
 		String ToURI = to_uri;
 		String ToTag = to_tag; // if not present, set to "-"
@@ -555,13 +574,14 @@ public class SIPCLFGenerator {
 		String Callid = call_id;
 		String serverTxn = server_txn;
 		String clientTxn = client_txn;
-		
+
 		String mandatory;
-		mandatory = timestamp + "." + fractionalseconds + "	" + flags + "	"
-				+ cseqString + "	" + responsestatus + "	" + RURI + "	" + DstIP
-				+ "	" + SrcIP + "	" + ToURI + "	" + ToTag + "	" + FromURI + "	"
-				+ FromTag + "	" + Callid + "	" + serverTxn + "	" + clientTxn
-				;
+		mandatory = timestamp + "." + fractionalseconds + "        " + flags
+				+ "        " + cseqString + "        " + responsestatus
+				+ "        " + RURI + "        " + DstIP + "        " + SrcIP
+				+ "        " + ToURI + "        " + ToTag + "        "
+				+ FromURI + "        " + FromTag + "        " + Callid
+				+ "        " + serverTxn + "        " + clientTxn;
 
 		String version = "A"; // 1byte
 		String recordlength; // 6bytes (length of entire record, from version to
@@ -621,8 +641,9 @@ public class SIPCLFGenerator {
 				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
 				+ 1 + FromTag.length() + 1 + Callid.length() + 1
 				+ serverTxn.length() + 1));
-		// optfieldpointer points to linefeed, not first optional field (if there is no optional field)
-		
+		// optfieldpointer points to linefeed, not first optional field (if
+		// there is no optional field)
+
 		String optFieldspoint = padZeros(Integer.toHexString(pointerstart
 				+ cseqString.length() + 1 + responsestatus.length() + 1
 				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
@@ -633,84 +654,187 @@ public class SIPCLFGenerator {
 		String indexPointers = (cseqpoint + respStatuspoint + rURIpoint
 				+ dstIPpoint + srcIPpoint + toURIpoint + toTagpoint
 				+ fromURIpoint + fromTagpoint + callIDpoint + serverTXNpoint
-				+ clientTXNpoint + optFieldspoint + "\n").toUpperCase();
-		
-		
-		//allow
+				+ clientTXNpoint + optFieldspoint).toUpperCase();
+
+		// allow
 		String allowField = "-";
 		if (!(allow.equalsIgnoreCase("-"))) {
-			
-			allowField = "	00@00000000," + allow_length + ",00,allow: " + allow.replace("	"," ");
-			
+			BEB = "00";
+			for (int i = 0; i < allow.length(); i++) {
+				char character = allow.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			allowField = "        00@00000000," + allow_length + "," + BEB
+					+ ",allow: " + allow.replace("        ", " ");
+
 		}
-			
-		//contact
+
+		// contact
 		String contactField = "-";
-		if (!(contact .equalsIgnoreCase("-"))) {
-			contactField = "	00@00000000," + contact_length + ",00,contact: " + contact.replace("	"," ");
+		if (!(contact.equalsIgnoreCase("-"))) {
+			BEB = "00";
+			for (int i = 0; i < contact.length(); i++) {
+				char character = contact.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			contactField = "        00@00000000," + contact_length + "," + BEB
+					+ ",contact: " + contact.replace("        ", " ");
 		}
-		
+
 		// min_expires
 		String min_expires_Field = "-";
 		if (!(min_expires.equalsIgnoreCase("-"))) {
-			min_expires_Field = "	00@00000000," + min_expires_length+ ",00,min-expires: " + min_expires.replace("	"," ");
+			BEB = "00";
+			for (int i = 0; i < min_expires.length(); i++) {
+				char character = min_expires.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			min_expires_Field = "        00@00000000," + min_expires_length
+					+ "," + BEB + ",min-expires: "
+					+ min_expires.replace("        ", " ");
 		}
-		
-		//proxy_authenticate
-		String proxy_authenticate_Field = "-";	
+
+		// proxy_authenticate
+		String proxy_authenticate_Field = "-";
 		if (!(proxy_authenticate.equalsIgnoreCase("-"))) {
-			proxy_authenticate_Field= "	00@00000000," + proxy_authenticate_length + ",00,proxy-authenticate: " + proxy_authenticate.replace("	"," ");
+			BEB = "00";
+			for (int i = 0; i < proxy_authenticate.length(); i++) {
+				char character = proxy_authenticate.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			proxy_authenticate_Field = "        00@00000000,"
+					+ proxy_authenticate_length + "," + BEB
+					+ ",proxy-authenticate: "
+					+ proxy_authenticate.replace("        ", " ");
 		}
-		
-		//unsupported
-		String unsupportedField = "-";		
+
+		// get sdp message body
+		String message_field = "\t-";
+		if (!(sip_message.equalsIgnoreCase("-"))) {
+			BEB = "00";
+			for (int i = 0; i < sip_message.length(); i++) {
+				char character = sip_message.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			message_field = "\t01@00000000," + sdp_length + "," + BEB
+					+ ",application/sdp: " + sip_message.replace("\t", " ");
+		}
+
+		// unsupported
+		String unsupportedField = "-";
 		if (!(unsupported.equalsIgnoreCase("-"))) {
-			unsupportedField = "	00@00000000," + unsupported_length + ",00,unsupported: " +unsupported.replace("	"," ");
+			BEB = "00";
+			for (int i = 0; i < unsupported.length(); i++) {
+				char character = unsupported.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			unsupportedField = "        00@00000000," + unsupported_length
+					+ "," + BEB + ",unsupported: "
+					+ unsupported.replace("        ", " ");
 		}
-		//www_authenticate
+		// www_authenticate
 		String www_authenticate_Field = "-";
 		if (!(www_authenticate.equalsIgnoreCase("-"))) {
-			www_authenticate_Field = "	00@00000000," + www_authenticate_length + ",00,www-authenticate: " + www_authenticate.replace("	"," ");
+			BEB = "00";
+			for (int i = 0; i < www_authenticate.length(); i++) {
+				char character = www_authenticate.charAt(i);
+				int ascii = (int) character;
+				if ((ascii < 32) || (ascii > 126)) {
+					BEB = "01";
+					break;
+				}
+			}
+			www_authenticate_Field = "        00@00000000,"
+					+ www_authenticate_length + "," + BEB
+					+ ",www-authenticate: "
+					+ www_authenticate.replace("        ", " ");
 		}
-		
-		String optional = allowField+ contactField+min_expires_Field + proxy_authenticate_Field+unsupportedField+www_authenticate_Field;
-		
-		
-		
 
+		String optional = allowField + contactField + min_expires_Field
+				+ proxy_authenticate_Field + unsupportedField
+				+ www_authenticate_Field + message_field;
 
 		// recordlength (assuming no optional fields)
-		String prereclength = Integer.toHexString(  pointerstart
+		String prereclength = Integer.toHexString(pointerstart
 				+ cseqString.length() + 1 + responsestatus.length() + 1
 				+ RURI.length() + 1 + DstIP.length() + 1 + SrcIP.length() + 1
 				+ ToURI.length() + 1 + ToTag.length() + 1 + FromURI.length()
 				+ 1 + FromTag.length() + 1 + Callid.length() + 1
-				+ serverTxn.length() + 1 + clientTxn.length()   
-				
-				
-				+   optional.length() +1 /* new linechar*/
-				
-				);
+				+ serverTxn.length() + 1 + clientTxn.length()
+
+				+ optional.length() + 1 /* new linechar */
+
+		);
 		recordlength = ("000000".substring(0, 6 - prereclength.length()) + prereclength)
 				.toUpperCase();
-		
-		
 
-		
 		// print CLF (pre tab/space switch).
-		String CLF = (version + recordlength + "," + indexPointers + mandatory +optional +"\n");
-		
-		try {
-			out.write(CLF);
-		} catch (IOException e) {
-			System.out.println("Error: Could not write to the log file.");
+		String CLF = version + recordlength + "," + indexPointers;
+		String CLF2 = mandatory + optional;
+
+		if (CLF.length() != (Integer.parseInt(prereclength, 16) - optional
+				.length())) {
+			// System.out.println("Error: record length discrepancy detected -- mandatory fields");
 		}
-		
-		if (CLF.length() != ( Integer.parseInt(prereclength, 16) - optional.length())) {
-			//System.out.println("Error: record length discrpency detected -- mandatory fields");
-		}
-		
+
+		writeToFile(CLF);
+		firstWrite = NO;
+		writeToFile(CLF2);
+
 	} // endclass
+
+	// method to append text to a file
+	public static void writeToFile(String in) {
+		if (firstWrite == YES) {
+			try {
+				PrintWriter out = new PrintWriter(new BufferedWriter(
+						new FileWriter("SIP" + dateAppend + ".log")));
+				out.println(in);
+				out.close();
+			} catch (IOException e) {
+				// error writing to file
+				System.out.println(e);
+			}
+		}
+
+		else {
+			try {
+				PrintWriter out = new PrintWriter(new BufferedWriter(
+						new FileWriter("SIP" + dateAppend + ".log", true)));
+				out.println(in);
+				out.close();
+			} catch (IOException e) {
+				// error writing to file
+				System.out.println(e);
+			}
+		}
+
+	}
+
 	// create hex string of input String.
 	public static String toHex(String arg) throws UnsupportedEncodingException {
 		return String.format("%x", new BigInteger(1, arg.getBytes("UTF8")));
