@@ -745,7 +745,7 @@ public class SIPCLFGenerator {
 				+ clientTXNpoint + optFieldspoint).toUpperCase() + "\n";
 
 		// allow
-		String allowField = "-";
+		String allowField = "\t-";
 		if (!(allow.equalsIgnoreCase("-"))) {
 			BEB = "00";
 			for (int i = 0; i < allow.length(); i++) {
@@ -762,7 +762,7 @@ public class SIPCLFGenerator {
 		}
 
 		// contact
-		String contactField = "-";
+		String contactField = "\t-";
 		if (!(contact.equalsIgnoreCase("-"))) {
 			BEB = "00";
 			for (int i = 0; i < contact.length(); i++) {
@@ -778,7 +778,7 @@ public class SIPCLFGenerator {
 		}
 
 		// min_expires
-		String min_expires_Field = "-";
+		String min_expires_Field = "\t-";
 		if (!(min_expires.equalsIgnoreCase("-"))) {
 			BEB = "00";
 			for (int i = 0; i < min_expires.length(); i++) {
@@ -795,7 +795,7 @@ public class SIPCLFGenerator {
 		}
 
 		// proxy_authenticate
-		String proxy_authenticate_Field = "-";
+		String proxy_authenticate_Field = "\t-";
 		if (!(proxy_authenticate.equalsIgnoreCase("-"))) {
 			BEB = "00";
 			for (int i = 0; i < proxy_authenticate.length(); i++) {
@@ -829,7 +829,7 @@ public class SIPCLFGenerator {
 		}
 
 		// unsupported
-		String unsupportedField = "-";
+		String unsupportedField = "\t-";
 		if (!(unsupported.equalsIgnoreCase("-"))) {
 			BEB = "00";
 			for (int i = 0; i < unsupported.length(); i++) {
@@ -845,7 +845,7 @@ public class SIPCLFGenerator {
 					+ unsupported.replace("        ", " ");
 		}
 		// www_authenticate
-		String www_authenticate_Field = "-";
+		String www_authenticate_Field = "\t-";
 		if (!(www_authenticate.equalsIgnoreCase("-"))) {
 			BEB = "00";
 			for (int i = 0; i < www_authenticate.length(); i++) {
