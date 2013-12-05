@@ -742,7 +742,7 @@ public class SIPCLFGenerator {
 		String indexPointers = (cseqpoint + respStatuspoint + rURIpoint
 				+ dstIPpoint + srcIPpoint + toURIpoint + toTagpoint
 				+ fromURIpoint + fromTagpoint + callIDpoint + serverTXNpoint
-				+ clientTXNpoint + optFieldspoint).toUpperCase();
+				+ clientTXNpoint + optFieldspoint).toUpperCase() + "\n";
 
 		// allow
 		String allowField = "-";
@@ -864,7 +864,7 @@ public class SIPCLFGenerator {
 
 		String optional = allowField + contactField + min_expires_Field
 				+ proxy_authenticate_Field + unsupportedField
-				+ www_authenticate_Field + message_field;
+				+ www_authenticate_Field + message_field + "\n";
 
 		// recordlength (assuming no optional fields)
 		String prereclength = Integer.toHexString(pointerstart
@@ -881,8 +881,7 @@ public class SIPCLFGenerator {
 				.toUpperCase();
 
 		// print CLF (pre tab/space switch).
-		String CLF = version + recordlength + "," + indexPointers;
-		String CLF2 = mandatory + optional;
+		String CLF = version + recordlength + "," + indexPointers + mandatory + optional;
 
 		if (CLF.length() != (Integer.parseInt(prereclength, 16) - optional
 				.length())) {
@@ -891,7 +890,6 @@ public class SIPCLFGenerator {
 
 		writeToFile(CLF);
 		firstWrite = NO;
-		writeToFile(CLF2);
 
 	} // endclass
 
@@ -901,7 +899,7 @@ public class SIPCLFGenerator {
 			try {
 				PrintWriter out = new PrintWriter(new BufferedWriter(
 						new FileWriter("SIP" + dateAppend + ".log")));
-				out.println(in);
+				out.print(in);
 				out.close();
 			} catch (IOException e) {
 				// error writing to file
@@ -913,7 +911,7 @@ public class SIPCLFGenerator {
 			try {
 				PrintWriter out = new PrintWriter(new BufferedWriter(
 						new FileWriter("SIP" + dateAppend + ".log", true)));
-				out.println(in);
+				out.print(in);
 				out.close();
 			} catch (IOException e) {
 				// error writing to file
