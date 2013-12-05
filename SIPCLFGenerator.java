@@ -1,8 +1,9 @@
-/* NC State University ECE Senior Design
- * Project: SIP CLF File Generator
+/* 
+ * Name:    SIP CLF Log Generator
  * Authors: Oleksandr Boyko (oaboyko@ncsu.edu)
- *                         Vincent Sanders (vmsander@ncsu.edu)
- *                         Ethan Smith                (essmith2@ncsu.edu)
+ *          Vincent Sanders (vmsander@ncsu.edu)
+ *          Ethan Smith     (essmith2@ncsu.edu)
+ * License:	GPLv3
  * Date:    12/01/2013 
  */
 
@@ -17,7 +18,6 @@ import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
