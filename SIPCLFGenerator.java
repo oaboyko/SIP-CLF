@@ -56,8 +56,11 @@ public class SIPCLFGenerator {
 	public static int firstWrite = YES;
 	public static int sipPackets = 0;
 
+	
 	public static java.util.Date date = new java.util.Date();
 	public final static long dateAppend = date.getTime();
+	
+	private static int role;
 
 	public static PcapPacketHandler<String> jpacketHandler = new PcapPacketHandler<String>() {
 
@@ -68,11 +71,12 @@ public class SIPCLFGenerator {
 		Ip6 ip6 = new Ip6();
 		Sdp sdp = new Sdp();
 
-		private Map<String, String> Sources = new HashMap<String, String>();
-		private Map<String, String> Destinations = new HashMap<String, String>();
-		private int srv_txn = 0;
-		private int clt_txn = 0;
-
+		private int srv_txn = -1;
+		private int clt_txn = -1;
+		
+		private Map<String,Integer> Sources = new HashMap<String,Integer>();
+		private Map<String,Integer> Destinations = new HashMap<String,Integer>();
+		
 		public void nextPacket(PcapPacket packet, String user) {
 			to_uri = "-";
 			from = "-";
@@ -270,23 +274,6 @@ public class SIPCLFGenerator {
 				}
 			}
 
-			// Get the server and client Txn
-			if (Sources.get(source_addr + ":" + source_port) == null
-					|| source_addr == ip_local) {
-				Sources.put(source_addr + ":" + source_port,
-						"s-tr-" + Integer.toString(srv_txn++));
-			}
-			server_txn = Sources.get(source_addr + ":" + source_port);
-
-			if (Destinations.get(dest_addr + ":" + dest_port) != null
-					&& dest_addr != ip_local) {
-				client_txn = Destinations.get(dest_addr + ":" + dest_port);
-			} else {
-				Destinations.put(dest_addr + ":" + dest_port,
-						"c-tr-" + Integer.toString(clt_txn++));
-				client_txn = Destinations.get(dest_addr + ":" + dest_port);
-			}
-
 			// Get Directionality
 			// Now compare local (external) IP address to the destination IP
 			// of the packet
@@ -296,6 +283,99 @@ public class SIPCLFGenerator {
 				if (source_addr == ip_local) {
 					directionality = "s";
 				}
+			}
+			
+			// Get the server and client Txn
+			if(directionality == "r" && message_type == "R"){		//receive a request
+				switch(role){										
+					case 1: if(!Destinations.containsKey(dest_addr + ":" + dest_port)){
+								clt_txn++;
+								Destinations.put(dest_addr + ":" + dest_port, clt_txn);
+							}
+							if(!Sources.containsKey(source_addr + ":" + source_port)){
+								srv_txn++;
+								Sources.put(source_addr + ":" + source_port, srv_txn);
+							}
+							client_txn = "c-tr-" + Destinations.get(dest_addr + ":" + dest_port);
+							server_txn = "s-tr-" + Sources.get(source_addr + ":" + source_port);
+							break;
+					case 2: if(!Sources.containsKey(source_addr + ":" + source_port)){
+								srv_txn++;
+								Sources.put(source_addr + ":" + source_port, srv_txn);
+							}
+							client_txn = "-";
+							server_txn = "s-tr-" + Sources.get(source_addr + ":" + source_port);
+							break;												
+				}
+			}
+			else if(directionality == "s" && message_type == "R"){  //sending a request
+				switch(role){
+					case 1: if(!Destinations.containsKey(dest_addr + ":" + dest_port)){
+								clt_txn++;
+								Destinations.put(dest_addr + ":" + dest_port, clt_txn);
+							}
+							client_txn = "c-tr-" + Destinations.get(dest_addr + ":" + dest_port);
+							server_txn = "-";
+							break;
+					case 2: if(!Sources.containsKey(source_addr + ":" + source_port)){
+								clt_txn++;
+								Sources.put(source_addr + ":" + source_port, clt_txn);
+							}
+							if(!Destinations.containsKey(dest_addr + ":" + dest_port)){
+								srv_txn++;
+								Destinations.put(dest_addr + ":" + dest_port, srv_txn);
+							}
+							client_txn = "c-tr-" + Sources.get(source_addr + ":" + source_port);
+							server_txn = "s-tr-" + Destinations.get(dest_addr + ":" + dest_port);
+							break;
+				}
+			}
+			else if(directionality == "r" && message_type == "r"){  //receive a response
+				switch(role){
+					case 1: if(!Sources.containsKey(source_addr + ":" + source_port)){
+								clt_txn++;
+								Sources.put(source_addr + ":" + source_port, clt_txn);
+							}
+							client_txn = "c-tr-" + Sources.get(source_addr + ":" + source_port);
+							server_txn = "-";
+							break;
+					case 2: if(!Sources.containsKey(source_addr + ":" + source_port)){
+								clt_txn++;
+								Sources.put(source_addr + ":" + source_port, clt_txn);
+							}
+							if(!Destinations.containsKey(dest_addr + ":" + dest_port)){
+								srv_txn++;
+								Destinations.put(dest_addr + ":" + dest_port, srv_txn);
+							}
+							client_txn = "c-tr-" + Sources.get(source_addr + ":" + source_port);
+							server_txn = "s-tr-" + Destinations.get(dest_addr + ":" + dest_port);
+							break;
+				}
+			}
+			else if(directionality == "s" && message_type == "r"){	//send a response
+				switch(role){
+					case 1: if(!Destinations.containsKey(dest_addr + ":" + dest_port)){
+								clt_txn++;
+								Destinations.put(dest_addr + ":" + dest_port, clt_txn);
+							}
+							if(!Sources.containsKey(source_addr + ":" + source_port)){
+								srv_txn++;
+								Sources.put(source_addr + ":" + source_port, srv_txn);
+							}
+							client_txn = "c-tr-" + Destinations.get(dest_addr + ":" + dest_port);
+							server_txn = "s-tr-" + Sources.get(source_addr + ":" + source_port);
+							break;
+					case 2: if(!Destinations.containsKey(dest_addr + ":" + dest_port)){
+								srv_txn++;
+								Destinations.put(dest_addr + ":" + dest_port, srv_txn);
+							}
+							client_txn = "-";
+							server_txn = "s-tr-" + Destinations.get(dest_addr + ":" + dest_port);
+							break;
+				}
+			}
+			else{
+				
 			}
 
 			String temp;
@@ -418,22 +498,29 @@ public class SIPCLFGenerator {
 		StringBuilder errBuf = new StringBuilder();
 
 		int num_of_packets;
-		int capt_type = 2;
+		int capt_type = 0;
 
 		// Get all of the devices in the current system
 		int r = Pcap.findAllDevs(allDevs, errBuf);
 		if (r == Pcap.NOT_OK || allDevs.isEmpty()) {
 			System.err.printf("Can't read list of devices, error is %s",
 					errBuf.toString());
+			scan.close();
 			return;
 		}
 
 		Pcap pcap = null;
 		// scan.nextLine()
-		System.out
-				.println("Please select the number for type of capture:\n  [1] Offline\n  [2] Online");
-		// capt_type = Integer.parseInt(System.console().readLine());
-		capt_type = Integer.parseInt(scan.nextLine());
+		while(capt_type != 1 && capt_type != 2){
+			System.out
+					.println("Please select the number for type of capture:\n  [1] Offline\n  [2] Online");
+			// capt_type = Integer.parseInt(System.console().readLine());
+			capt_type = Integer.parseInt(scan.nextLine());
+		}
+		while(role != 1 && role != 2){
+			System.out.println("What is the role of this system?\n [1] Client\n [2] Proxy");
+			role = Integer.parseInt(scan.nextLine());
+		}
 		System.out
 				.println("Please enter the number of packets to be processed (-1 for \"all\")");
 		// num_of_packets = Integer.parseInt(System.console().readLine());
@@ -480,6 +567,8 @@ public class SIPCLFGenerator {
 			// int port_num = Integer.parseInt(System.console().readLine());
 			int port_num = Integer.parseInt(scan.nextLine());
 
+			scan.close();
+			
 			// BPF program assists in filtering in the SIP packets
 			PcapBpfProgram program = new PcapBpfProgram();
 			String expression = "dst port " + port_num + " and (tcp or udp)";
@@ -514,7 +603,6 @@ public class SIPCLFGenerator {
 					+ num_of_packets + " PACKETS..." + sipPackets
 					+ " WERE SIP PACKETS");
 		}
-
 	}
 
 	public static void logGenerator() {
