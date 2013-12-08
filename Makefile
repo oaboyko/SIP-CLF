@@ -1,5 +1,5 @@
-JCFLAGS=-cp jnetpcap.jar
-JFLAGS=-cp .:jnetpcap.jar
+JCFLAGS=-cp ./lib/jnetpcap.jar
+JFLAGS=-cp .:./lib/jnetpcap.jar
 
 
 all:	
